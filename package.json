@@ -1,0 +1,26 @@
+{
+  "name": "im-52-1",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "ws-chat": "node --env-file=.env server/chat.mjs"
+  },
+  "dependencies": {
+    "@quasar/extras": "^1.17.0",
+    "express": "^5.1.0",
+    "mainloop.js": "^1.0.4",
+    "quasar": "^2.18.5",
+    "jsonwebtoken": "^9.0.2",
+    "vue": "^3.5.18",
+    "wsmini": "^1.2.0"
+  },
+  "devDependencies": {
+    "@quasar/vite-plugin": "^1.10.0",
+    "@vitejs/plugin-vue": "^6.0.1",
+    "vite": "^7.1.2"
+  }
+}
