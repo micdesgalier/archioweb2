@@ -38,9 +38,9 @@ conversationParticipantSchema.index(
 conversationParticipantSchema.index({ user_id: 1 });
 
 // Règles métier utiles
-conversationParticipantSchema.pre('save', function (next) {
+conversationParticipantSchema.pre('save', async function () {
   // Empêcher un utilisateur d'être ajouté deux fois est déjà couvert par l'index unique
-  next();
+  // Aucun code supplémentaire nécessaire ici
 });
 
 export const ConversationParticipant = model(

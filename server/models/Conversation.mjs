@@ -32,22 +32,16 @@ conversationSchema.index({ type: 1 });
 conversationSchema.index({ group_id: 1 });
 
 // Règles métier
-conversationSchema.pre('save', function (next) {
+conversationSchema.pre('save', async function () {
   // Une conversation de groupe doit avoir un group_id
   if (this.type === 'group' && !this.group_id) {
-    return next(
-      new Error('Une conversation de type "group" doit être liée à un study_group.')
-    );
+    throw new Error('Une conversation de type "group" doit être liée à un study_group.');
   }
 
   // Une conversation privée ne doit pas être liée à un groupe
   if (this.type === 'private' && this.group_id) {
-    return next(
-      new Error('Une conversation privée ne peut pas être liée à un study_group.')
-    );
+    throw new Error('Une conversation privée ne peut pas être liée à un study_group.');
   }
-
-  next();
 });
 
 export const Conversation = model('Conversation', conversationSchema);

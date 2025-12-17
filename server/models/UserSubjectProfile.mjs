@@ -58,13 +58,10 @@ userSubjectProfileSchema.index(
 );
 
 // Règle métier utile : ne pas être à la fois en aide et en difficulté
-userSubjectProfileSchema.pre('save', function (next) {
+userSubjectProfileSchema.pre('save', async function () {
   if (this.can_help && this.needs_help) {
-    return next(
-      new Error('Un utilisateur ne peut pas à la fois aider et demander de l’aide pour la même matière.')
-    );
+    throw new Error('Un utilisateur ne peut pas à la fois aider et demander de l’aide pour la même matière.');
   }
-  next();
 });
 
 export const UserSubjectProfile = model(

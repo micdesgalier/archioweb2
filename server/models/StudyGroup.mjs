@@ -78,22 +78,16 @@ studyGroupSchema.index({ city_id: 1 });
 studyGroupSchema.index({ start_time: 1 });
 
 // Règles métier
-studyGroupSchema.pre('save', function (next) {
+studyGroupSchema.pre('save', async function () {
   // Un groupe en ligne ne doit pas avoir de ville
   if (this.is_online && this.city_id) {
-    return next(
-      new Error('Un groupe en ligne ne doit pas avoir de ville associée.')
-    );
+    throw new Error('Un groupe en ligne ne doit pas avoir de ville associée.');
   }
 
   // end_time doit être après start_time
   if (this.start_time && this.end_time && this.end_time <= this.start_time) {
-    return next(
-      new Error('La date de fin doit être postérieure à la date de début.')
-    );
+    throw new Error('La date de fin doit être postérieure à la date de début.');
   }
-
-  next();
 });
 
 export const StudyGroup = model('StudyGroup', studyGroupSchema);

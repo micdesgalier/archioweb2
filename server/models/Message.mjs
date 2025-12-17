@@ -53,16 +53,13 @@ messageSchema.index({ sender_id: 1 });
 messageSchema.index({ parent_id: 1 });
 
 // Règles métier
-messageSchema.pre('save', function (next) {
+messageSchema.pre('save', async function () {
   // Un message texte doit avoir du contenu
   if (this.message_type === 'text' && (!this.content || !this.content.trim())) {
-    return next(
-      new Error('Un message de type "text" doit contenir du texte.')
-    );
+    throw new Error('Un message de type "text" doit contenir du texte.');
   }
 
   // Les autres types peuvent avoir content null (URL fichier gérée ailleurs)
-  next();
 });
 
 export const Message = model('Message', messageSchema);

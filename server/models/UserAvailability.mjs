@@ -49,15 +49,15 @@ const userAvailabilitySchema = new Schema({
 userAvailabilitySchema.index({ user_id: 1, start_time: 1, end_time: 1 });
 
 // Règles métier
-userAvailabilitySchema.pre('save', function (next) {
+userAvailabilitySchema.pre('save', async function () {
   if (this.end_time <= this.start_time) {
-    return next(new Error('La date de fin doit être postérieure à la date de début.'));
+    throw new Error('La date de fin doit être postérieure à la date de début.');
   }
+
   // Si is_recurring est vrai, recurrence_rule doit être défini
   if (this.is_recurring && !this.recurrence_rule) {
-    return next(new Error('Une disponibilité récurrente doit avoir une règle de récurrence.'));
+    throw new Error('Une disponibilité récurrente doit avoir une règle de récurrence.');
   }
-  next();
 });
 
 export const UserAvailability = model('UserAvailability', userAvailabilitySchema);

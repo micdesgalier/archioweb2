@@ -59,14 +59,11 @@ groupMemberSchema.index({ user_id: 1 });
 groupMemberSchema.index({ status: 1 });
 
 // Règles métier
-groupMemberSchema.pre('save', function (next) {
+groupMemberSchema.pre('save', async function () {
   // Un admin doit être "joined"
   if (this.role === 'admin' && this.status !== 'joined') {
-    return next(
-      new Error('Un admin doit obligatoirement avoir le statut "joined".')
-    );
+    throw new Error('Un admin doit obligatoirement avoir le statut "joined".');
   }
-  next();
 });
 
 export const GroupMember = model('GroupMember', groupMemberSchema);

@@ -50,11 +50,10 @@ userSchema.set('toJSON', {
 });
 
 // lowercase automatique de l'email si modifié (sécurité/consistance)
-userSchema.pre('save', function (next) {
+userSchema.pre('save', async function () {
   if (this.isModified('email') && typeof this.email === 'string') {
     this.email = this.email.toLowerCase();
   }
-  next();
 });
 
 // Virtual: calculer l'âge à partir de birth_date (entier d'années)
