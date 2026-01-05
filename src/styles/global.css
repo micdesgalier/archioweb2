@@ -58,6 +58,9 @@ body {
 body:has(.sc-login-page) {
   display: block;
   place-items: unset;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
 }
 
 #app:has(.sc-login-page) {
@@ -66,6 +69,7 @@ body:has(.sc-login-page) {
   margin: 0;
   padding: 0;
   text-align: left;
+  min-height: 100vh;
 }
 
 /* Classes utilitaires Study Connect */
@@ -77,24 +81,28 @@ body:has(.sc-login-page) {
 }
 
 .sc-header {
+  border-radius: 0;
   background: radial-gradient(ellipse at center top, #0066FF 0%, #0046FB 50%, #0035C0 100%);
   color: var(--sc-text-white);
   padding: var(--sc-spacing-lg) var(--sc-spacing-md) calc(var(--sc-spacing-lg) + 30px);
   position: relative;
   overflow: visible;
   padding-top: calc(var(--sc-spacing-md) + 20px);
+  width: 100%;
+  margin-top: 0;
 }
 
 .sc-header::after {
   content: '';
   position: absolute;
-  bottom: -1px;
+  bottom: 0;
   left: 0;
   right: 0;
   height: 35px;
   background: var(--sc-bg-white);
-  border-radius: 35px 35px 0 0;
+  border-radius: 0 35px 0 0;
   z-index: 1;
+  border-bottom-left-radius: 0;
 }
 
 .sc-back-button {
@@ -140,6 +148,10 @@ body:has(.sc-login-page) {
   position: relative;
   z-index: 1;
   flex: 1;
+  border-radius: 35px 0 0 0;
+  margin-top: -1px;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .sc-welcome {
@@ -261,6 +273,8 @@ body:has(.sc-login-page) {
   justify-content: flex-end;
   padding: var(--sc-spacing-lg) var(--sc-spacing-md) var(--sc-spacing-md);
   padding-top: 40px;
+  border-radius: 0 0 30px 0;
+  margin-top: 0;
 }
 
 .sc-books-decoration {

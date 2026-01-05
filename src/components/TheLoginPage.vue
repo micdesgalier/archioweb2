@@ -141,6 +141,8 @@
   display: flex;
   flex-direction: column;
   background: var(--sc-bg-white);
+  margin: 0;
+  padding: 0;
 }
 
 .sc-form {
