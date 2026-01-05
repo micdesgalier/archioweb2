@@ -41,7 +41,11 @@
 </script>
 
 <template>
-  <q-layout view="hHh lpr lFf">
+  <!-- Page de login sans layout Quasar -->
+  <TheLoginPage v-if="!isAuth" />
+  
+  <!-- Chat avec layout Quasar -->
+  <q-layout v-else view="hHh lpr lFf">
     <q-header :class="{ 'no-shadow': $q.dark.isActive }" :elevated="!$q.dark.isActive">
       <TheChatToolbar />
     </q-header>
@@ -49,13 +53,12 @@
     <TheChatUsersList />
 
     <q-page-container>
-      <q-page padding :class="{ 'no-scroll': !isAuth }">
-        <TheLoginPage v-if="!isAuth" />
-        <TheChatMessagesList v-if="isAuth" />
+      <q-page padding>
+        <TheChatMessagesList />
       </q-page>
     </q-page-container>
 
-    <q-footer v-if="isAuth" class="q-pa-xs" :class="{ 'bg-dark': $q.dark.isActive, 'bg-grey-2': !$q.dark.isActive }">
+    <q-footer class="q-pa-xs" :class="{ 'bg-dark': $q.dark.isActive, 'bg-grey-2': !$q.dark.isActive }">
       <TheChatForm />
     </q-footer>
   </q-layout>

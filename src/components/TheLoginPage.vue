@@ -2,6 +2,9 @@
   import { ref } from 'vue';
   import { connectToChat } from '@/store/chat.js';
   import { useFetchJson } from '@/composables/useFetchJson';
+  import UserIcon from '@/assets/bx_bx-user.svg';
+  import LockIcon from '@/assets/emojione-monotone_locked-with-key.svg';
+  import BooksIcon from '@/assets/twemoji_books.svg';
 
   const username = ref('');
   const password = ref('');
@@ -38,85 +41,138 @@
 </script>
 
 <template>
-  <q-page class="flex flex-center">
-    <q-card class="login-card q-pa-md" :class="{ 'no-shadow': $q.dark.isActive }">
-      <q-card-section>
-        <div class="text-h5 text-center q-mb-md">IM Chat</div>
-      </q-card-section>
+  <div class="sc-login-page">
+    <!-- Header bleu avec gradient -->
+    <div class="sc-header">
+      <button class="sc-back-button" @click.prevent>
+        <q-icon name="arrow_back" />
+      </button>
+      <h1 class="sc-title">Study Connect</h1>
+      <h2 class="sc-subtitle">Connexion</h2>
+    </div>
 
-      <q-card-section>
-        <q-form @submit="handleSubmit">
-          <q-input
+    <!-- Contenu blanc -->
+    <div class="sc-content">
+      <h3 class="sc-welcome">Te voilà de retour!</h3>
+      <p class="sc-instructions">Se connecter et continuer les révisions</p>
+
+      <form @submit.prevent="handleSubmit" class="sc-form">
+        <!-- Champ Pseudo ou email -->
+        <div class="sc-form-group">
+          <label class="sc-label">
+            <img :src="UserIcon" alt="User" class="sc-label-icon" />
+            Pseudo ou email
+          </label>
+          <input
             v-model="username"
-            label="Username"
-            :rules="usernameRules"
-            :disable="loading"
-            outlined
+            type="text"
+            class="sc-input"
+            placeholder="Entrer votre pseudo ou email"
+            :disabled="loading"
             autofocus
             maxlength="20"
-            counter
-            class="q-mb-md"
-          >
-            <template v-slot:prepend>
-              <q-icon name="person" />
-            </template>
-          </q-input>
-
-          <q-input
-            v-model="password"
-            label="Password"
-            :type="isPwd ? 'password' : 'text'"
-            :disable="loading"
-            outlined
-            class="q-mb-md"
-          >
-            <template v-slot:prepend>
-              <q-icon name="lock" />
-            </template>
-            <template v-slot:append>
-              <q-icon
-                :name="isPwd ? 'visibility_off' : 'visibility'"
-                class="cursor-pointer"
-                @click="isPwd = !isPwd"
-              />
-            </template>
-          </q-input>
-
-          <q-checkbox
-            v-model="rememberMe"
-            label="Remember me"
-            :disable="loading"
-            class="q-mb-md"
           />
+        </div>
 
-          <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded>
-            <template v-slot:avatar>
-              <q-icon name="error" color="white" />
-            </template>
-            {{ error }}
-          </q-banner>
+        <!-- Champ Mot de passe -->
+        <div class="sc-form-group">
+          <label class="sc-label">
+            <img :src="LockIcon" alt="Lock" class="sc-label-icon" />
+            Mot de passe
+          </label>
+          <div class="sc-input-wrapper">
+            <input
+              v-model="password"
+              :type="isPwd ? 'password' : 'text'"
+              class="sc-input sc-input-password"
+              placeholder="Entrer votre mot de passe"
+              :disabled="loading"
+            />
+            <button
+              type="button"
+              @click="isPwd = !isPwd"
+              class="sc-password-toggle"
+            >
+              <q-icon :name="isPwd ? 'visibility_off' : 'visibility'" />
+            </button>
+          </div>
+        </div>
 
-          <q-btn
-            type="submit"
-            label="Login"
-            color="primary"
-            :loading="loading"
-            :disable="!username || !password || loading"
-            class="full-width"
-          />
-        </q-form>
-      </q-card-section>
-    </q-card>
-  </q-page>
+        <!-- Lien mot de passe oublié -->
+        <div style="text-align: right; margin-bottom: var(--sc-spacing-md);">
+          <a href="#" class="sc-link">Mot de passe oublié ?</a>
+        </div>
+
+        <!-- Message d'erreur -->
+        <div v-if="error" style="background: #FFE5E5; color: #D32F2F; padding: 12px; border-radius: var(--sc-border-radius-sm); margin-bottom: var(--sc-spacing-md); font-size: 14px;">
+          {{ error }}
+        </div>
+
+        <!-- Bouton Connexion -->
+        <button
+          type="submit"
+          class="sc-button"
+          :disabled="!username || !password || loading"
+        >
+          <span v-if="loading">Connexion...</span>
+          <span v-else>Connexion</span>
+        </button>
+      </form>
+
+      <!-- Lien inscription -->
+      <div class="sc-signup-link">
+        Pas encore de compte? <a href="#" class="sc-link">S'inscrire</a>
+      </div>
+    </div>
+
+    <!-- Section décorative avec livres -->
+    <div class="sc-decorative-section">
+      <div class="sc-books-decoration">
+        <img :src="BooksIcon" alt="Books" class="sc-books-image" />
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
-  .login-card {
-    width: 100%;
-    max-width: 400px;
-  }
+.sc-login-page {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--sc-bg-white);
+}
 
-  .no-shadow {
-    box-shadow: none !important;
-  }
+.sc-form {
+  width: 100%;
+}
+
+.sc-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.sc-input-password {
+  padding-right: 45px;
+}
+
+.sc-password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sc-text-secondary);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s ease;
+}
+
+.sc-password-toggle:hover {
+  color: var(--sc-primary-blue);
+}
 </style>
