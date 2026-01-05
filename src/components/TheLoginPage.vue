@@ -135,6 +135,25 @@
 </template>
 
 <style scoped>
+/* Override global #app styles pour la page login */
+:global(body:has(.sc-login-page)) {
+  display: block;
+  place-items: unset;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+}
+
+:global(#app:has(.sc-login-page)) {
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  min-height: 100vh;
+}
+
+/* Page container */
 .sc-login-page {
   width: 100%;
   min-height: 100vh;
@@ -145,8 +164,138 @@
   padding: 0;
 }
 
+/* Header */
+.sc-header {
+  border-radius: 0;
+  background: radial-gradient(ellipse at center top, #0066FF 0%, #0046FB 50%, #0035C0 100%);
+  color: var(--sc-text-white);
+  padding: var(--sc-spacing-lg) var(--sc-spacing-md) calc(var(--sc-spacing-lg) + 30px);
+  position: relative;
+  overflow: visible;
+  padding-top: calc(var(--sc-spacing-md) + 20px);
+  width: 100%;
+  margin-top: 0;
+}
+
+.sc-header::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 35px;
+  background: var(--sc-bg-white);
+  border-radius: 0 35px 0 0;
+  z-index: 1;
+}
+
+.sc-back-button {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--sc-text-white);
+  font-size: 20px;
+  margin-bottom: var(--sc-spacing-md);
+  transition: background 0.2s ease;
+}
+
+.sc-back-button:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.sc-title {
+  font-size: 28px;
+  font-weight: var(--sc-font-weight-bold);
+  text-align: center;
+  color: var(--sc-text-white);
+  margin-bottom: var(--sc-spacing-sm);
+}
+
+.sc-subtitle {
+  font-size: 24px;
+  font-weight: var(--sc-font-weight-bold);
+  text-align: center;
+  color: var(--sc-text-white);
+  margin-bottom: var(--sc-spacing-lg);
+}
+
+/* Content area */
+.sc-content {
+  background: var(--sc-bg-white);
+  padding: var(--sc-spacing-xl) var(--sc-spacing-md);
+  min-height: calc(100vh - 200px);
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  border-radius: 35px 0 35px 0;
+  margin-top: -1px;
+  animation: fadeInUp 0.4s ease-out;
+}
+
+.sc-welcome {
+  font-size: 24px;
+  font-weight: var(--sc-font-weight-semibold);
+  color: var(--sc-text-primary);
+  margin-bottom: var(--sc-spacing-xs);
+}
+
+.sc-instructions {
+  font-size: 14px;
+  color: var(--sc-text-secondary);
+  margin-bottom: var(--sc-spacing-lg);
+}
+
+/* Form */
 .sc-form {
   width: 100%;
+}
+
+.sc-form-group {
+  margin-bottom: var(--sc-spacing-md);
+}
+
+.sc-label {
+  display: flex;
+  align-items: center;
+  gap: var(--sc-spacing-xs);
+  font-size: 14px;
+  font-weight: var(--sc-font-weight-medium);
+  color: var(--sc-text-primary);
+  margin-bottom: var(--sc-spacing-xs);
+}
+
+.sc-label-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.sc-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-radius: var(--sc-border-radius-sm);
+  background-color: var(--sc-bg-input);
+  font-size: 16px;
+  font-family: var(--sc-font-family);
+  color: var(--sc-text-primary);
+  transition: background-color 0.2s ease;
+}
+
+.sc-input:focus {
+  outline: none;
+  background-color: #E8EDF2;
+}
+
+.sc-input::placeholder {
+  color: var(--sc-text-secondary);
 }
 
 .sc-input-wrapper {
@@ -176,5 +325,111 @@
 
 .sc-password-toggle:hover {
   color: var(--sc-primary-blue);
+}
+
+/* Links */
+.sc-link {
+  color: var(--sc-primary-blue);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: var(--sc-font-weight-medium);
+  transition: color 0.2s ease;
+}
+
+.sc-link:hover {
+  color: var(--sc-primary-blue-dark);
+  text-decoration: underline;
+}
+
+/* Button */
+.sc-button {
+  width: 100%;
+  padding: 16px;
+  border: none;
+  border-radius: var(--sc-border-radius-sm);
+  background: linear-gradient(135deg, #0046FB 0%, #0035C0 100%);
+  color: var(--sc-text-white);
+  font-size: 16px;
+  font-weight: var(--sc-font-weight-semibold);
+  font-family: var(--sc-font-family);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  margin-top: var(--sc-spacing-md);
+}
+
+.sc-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 70, 251, 0.3);
+}
+
+.sc-button:active {
+  transform: translateY(0);
+}
+
+.sc-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Signup link */
+.sc-signup-link {
+  text-align: center;
+  margin-top: var(--sc-spacing-lg);
+  font-size: 14px;
+  color: var(--sc-text-secondary);
+}
+
+.sc-signup-link .sc-link {
+  margin-left: 4px;
+}
+
+/* Decorative section */
+.sc-decorative-section {
+  background: radial-gradient(ellipse at center bottom, #0066FF 0%, #0046FB 50%, #0035C0 100%);
+  min-height: 160px;
+  height: 160px;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: var(--sc-spacing-lg) var(--sc-spacing-md) var(--sc-spacing-md);
+  padding-top: 40px;
+  border-radius: 0;
+  margin-top: 0;
+}
+
+.sc-books-decoration {
+  width: 103px;
+  height: 100px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sc-books-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive */
+@media (min-width: 768px) {
+  .sc-content {
+    padding: var(--sc-spacing-xl) var(--sc-spacing-lg);
+  }
 }
 </style>
