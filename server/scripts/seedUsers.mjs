@@ -1,6 +1,8 @@
 // server/scripts/seedUsers.mjs
 import { connectMongo, disconnectMongo } from '../db/mongo.mjs';
 import User from '../models/User.mjs';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 const usersToSeed = [
   {
@@ -55,8 +57,11 @@ const usersToSeed = [
   },
 ];
 
-async function main() {
-  await connectMongo(console);
+/**
+ * Exporte la fonction de seed pour être appelée depuis seedAll.js
+ * IMPORTANT : cette fonction n'ouvre / ne ferme PAS la connexion MongoDB.
+ */
+export async function seedUsers() {
   for (const u of usersToSeed) {
     const exists = await User.findOne({ email: u.email });
     if (!exists) {
@@ -67,8 +72,25 @@ async function main() {
       console.log('User already exists:', u.email);
     }
   }
-  await disconnectMongo(console);
-  process.exit(0);
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+/**
+ * Si on exécute ce fichier directement (node server/scripts/seedUsers.mjs),
+ * on ouvre et ferme la connexion automatiquement.
+ */
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] === __filename) {
+  (async () => {
+    try {
+      await connectMongo(console);
+      await seedUsers();
+      console.log('✅ seedUsers exécuté (standalone)');
+      await disconnectMongo(console);
+      process.exit(0);
+    } catch (err) {
+      console.error('❌ Erreur seedUsers (standalone):', err);
+      try { await disconnectMongo(console); } catch (_) {}
+      process.exit(1);
+    }
+  })();
+}

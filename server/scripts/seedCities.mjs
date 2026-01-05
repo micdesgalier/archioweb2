@@ -1,6 +1,7 @@
 // server/scripts/seedCities.mjs
 import { connectMongo, disconnectMongo } from '../db/mongo.mjs';
 import City from '../models/City.mjs';
+import { fileURLToPath } from 'url';
 
 const citiesToSeed = [
   { name: 'Genève', country: 'Suisse', postal_code: '1200' },
@@ -10,20 +11,41 @@ const citiesToSeed = [
   { name: 'Berne', country: 'Suisse', postal_code: '3000' },
 ];
 
-async function main() {
-  await connectMongo(console);
+/**
+ * Seed callable depuis seedAll.js
+ * ⚠️ Ne gère PAS la connexion MongoDB
+ */
+export async function seedCities() {
   for (const c of citiesToSeed) {
     const exists = await City.findOne({ name: c.name, postal_code: c.postal_code });
-    if (!exists) {
-      const city = new City(c);
-      await city.save();
-      console.log('Seeded city:', c.name);
-    } else {
-      console.log('City already exists:', c.name);
+
+    if (exists) {
+      console.log('City exists:', c.name);
+      continue;
     }
+
+    await City.create(c);
+    console.log('Seeded city:', c.name);
   }
-  await disconnectMongo(console);
-  process.exit(0);
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+/**
+ * Exécution standalone
+ * node server/scripts/seedCities.mjs
+ */
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] === __filename) {
+  (async () => {
+    try {
+      await connectMongo(console);
+      await seedCities();
+      console.log('✅ seedCities exécuté (standalone)');
+      await disconnectMongo(console);
+      process.exit(0);
+    } catch (err) {
+      console.error('❌ Erreur seedCities:', err);
+      try { await disconnectMongo(console); } catch (_) {}
+      process.exit(1);
+    }
+  })();
+}

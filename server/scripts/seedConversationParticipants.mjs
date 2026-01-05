@@ -5,16 +5,19 @@ import StudyGroup from '../models/StudyGroup.mjs';
 import GroupMember from '../models/GroupMember.mjs';
 import Conversation from '../models/Conversation.mjs';
 import ConversationParticipant from '../models/ConversationParticipant.mjs';
+import { fileURLToPath } from 'url';
 
-async function main() {
-  await connectMongo(console);
-
+/**
+ * Seed callable depuis seedAll.js
+ * ⚠️ Ne gère PAS la connexion MongoDB
+ */
+export async function seedConversationParticipants() {
   const users = await User.find();
-  const groups = await StudyGroup.find();
   const conversations = await Conversation.find();
+
   if (users.length === 0 || conversations.length === 0) {
-    console.log('❌ Assure-toi que les utilisateurs et conversations sont déjà seedés.');
-    process.exit(0);
+    console.log('❌ Users ou Conversations manquants — seeds requis avant.');
+    return;
   }
 
   for (const conv of conversations) {
@@ -25,8 +28,11 @@ async function main() {
       const members = await GroupMember.find({ group_id: conv.group_id });
       participants = members.map(m => m.user_id);
     } else if (conv.type === 'private') {
-      // Pour les conversations privées, prendre deux utilisateurs aléatoires
-      participants = users.sort(() => 0.5 - Math.random()).slice(0, 2).map(u => u._id);
+      // 2 utilisateurs aléatoires pour la conversation privée
+      participants = [...users]
+        .sort(() => 0.5 - Math.random())
+        .slice(0, 2)
+        .map(u => u._id);
     }
 
     for (const userId of participants) {
@@ -35,21 +41,38 @@ async function main() {
         user_id: userId,
       });
 
-      if (!exists) {
-        const participant = new ConversationParticipant({
-          conversation_id: conv._id,
-          user_id: userId,
-        });
-        await participant.save();
-        console.log(`Seeded participant ${userId} for conversation ${conv.id}`);
-      } else {
-        console.log(`Participant ${userId} already exists in conversation ${conv.id}`);
+      if (exists) {
+        console.log(`Participant exists: ${userId} in conversation ${conv._id}`);
+        continue;
       }
+
+      await ConversationParticipant.create({
+        conversation_id: conv._id,
+        user_id: userId,
+      });
+
+      console.log(`Seeded participant ${userId} for conversation ${conv._id}`);
     }
   }
-
-  await disconnectMongo(console);
-  process.exit(0);
 }
 
-main().catch(err => { console.error(err); process.exit(1); });
+/**
+ * Exécution standalone
+ * node server/scripts/seedConversationParticipants.mjs
+ */
+const __filename = fileURLToPath(import.meta.url);
+if (process.argv[1] === __filename) {
+  (async () => {
+    try {
+      await connectMongo(console);
+      await seedConversationParticipants();
+      console.log('✅ seedConversationParticipants exécuté (standalone)');
+      await disconnectMongo(console);
+      process.exit(0);
+    } catch (err) {
+      console.error('❌ Erreur seedConversationParticipants:', err);
+      try { await disconnectMongo(console); } catch (_) {}
+      process.exit(1);
+    }
+  })();
+}
