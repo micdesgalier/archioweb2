@@ -1,15 +1,14 @@
 // server/scripts/seedUsers.mjs
+import bcrypt from 'bcryptjs';
 import { connectMongo, disconnectMongo } from '../db/mongo.mjs';
 import User from '../models/User.mjs';
 import { fileURLToPath } from 'url';
-import path from 'path';
 
 const usersToSeed = [
   {
     first_name: 'Alice',
     last_name: 'Dupont',
     email: 'alice.dupont@example.com',
-    password_hash: 'hashedpassword1',
     birth_date: new Date('1998-03-15'),
     study_year: 2,
     bio: 'Étudiante en informatique.',
@@ -19,7 +18,6 @@ const usersToSeed = [
     first_name: 'Bob',
     last_name: 'Martin',
     email: 'bob.martin@example.com',
-    password_hash: 'hashedpassword2',
     birth_date: new Date('1997-07-22'),
     study_year: 3,
     bio: 'Passionné de mathématiques.',
@@ -29,7 +27,6 @@ const usersToSeed = [
     first_name: 'Caroline',
     last_name: 'Petit',
     email: 'caroline.petit@example.com',
-    password_hash: 'hashedpassword3',
     birth_date: new Date('1999-01-05'),
     study_year: 1,
     bio: 'Amoureuse de la physique et de l’astronomie.',
@@ -39,7 +36,6 @@ const usersToSeed = [
     first_name: 'David',
     last_name: 'Lemoine',
     email: 'david.lemoine@example.com',
-    password_hash: 'hashedpassword4',
     birth_date: new Date('2000-12-12'),
     study_year: 2,
     bio: 'Fan de biologie et écologie.',
@@ -49,13 +45,16 @@ const usersToSeed = [
     first_name: 'Émilie',
     last_name: 'Moreau',
     email: 'emilie.moreau@example.com',
-    password_hash: 'hashedpassword5',
     birth_date: new Date('1998-09-30'),
     study_year: 4,
     bio: 'Étudiante en littérature française.',
     avatar_url: 'https://i.pravatar.cc/150?img=5',
   },
 ];
+
+// Mot de passe de développement par défaut (modifiable via la variable d'env DEV_PASSWORD)
+const DEV_PASSWORD = process.env.DEV_PASSWORD || 'password123';
+const SALT_ROUNDS = 10;
 
 /**
  * Exporte la fonction de seed pour être appelée depuis seedAll.js
@@ -65,9 +64,17 @@ export async function seedUsers() {
   for (const u of usersToSeed) {
     const exists = await User.findOne({ email: u.email });
     if (!exists) {
-      const user = new User(u);
+      // Hash le mot de passe de dev
+      const password_hash = await bcrypt.hash(DEV_PASSWORD, SALT_ROUNDS);
+
+      const userData = {
+        ...u,
+        password_hash,
+      };
+
+      const user = new User(userData);
       await user.save();
-      console.log('Seeded user:', u.email);
+      console.log('Seeded user:', u.email, `(password: ${DEV_PASSWORD})`);
     } else {
       console.log('User already exists:', u.email);
     }
