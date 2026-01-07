@@ -104,9 +104,9 @@ onMounted(async () => {
       </button>
       
       <div class="user-info">
-        <img :src="discussion.avatar" :alt="discussion.name" class="user-avatar" />
+        <img :src="discussion.avatar" :alt="discussion.fullName || discussion.name" class="user-avatar" />
         <div class="user-details">
-          <span class="user-name">{{ discussion.name }}</span>
+          <span class="user-name">{{ discussion.fullName || discussion.name }}</span>
           <span v-if="isPartnerOnline" class="user-status online">En ligne</span>
           <span v-else class="user-status offline">Hors ligne</span>
         </div>
