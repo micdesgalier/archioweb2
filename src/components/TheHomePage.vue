@@ -130,9 +130,6 @@ onMounted(() => {
   <div class="home-page">
     <!-- Header -->
     <header class="home-header">
-      <button class="menu-btn">
-        <q-icon name="apps" />
-      </button>
       <h1 class="greeting">
         <span class="wave">👋</span> Hello {{ currentUsername || 'User' }}
       </h1>
@@ -167,8 +164,8 @@ onMounted(() => {
       </div>
 
       <button class="see-all-btn" @click="openCalendar">
-        Voir tout
-        <q-icon name="add" />
+        Voir le calendrier
+        <q-icon name="calendar_month" />
       </button>
     </section>
 
@@ -272,18 +269,6 @@ onMounted(() => {
   justify-content: space-between;
   padding: 16px 20px;
   background: transparent;
-}
-
-.menu-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 8px;
-  color: var(--sc-text-primary);
-}
-
-.menu-btn .q-icon {
-  font-size: 24px;
 }
 
 .greeting {
