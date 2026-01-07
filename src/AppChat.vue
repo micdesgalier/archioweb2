@@ -88,6 +88,7 @@
 </script>
 
 <template>
+  <router-view />
   <!-- Onboarding -->
   <TheOnboardingPage 
     v-if="showOnboarding" 

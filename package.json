@@ -19,6 +19,7 @@
     "mongoose": "^9.0.0",
     "quasar": "^2.18.5",
     "vue": "^3.5.18",
+    "vue-router": "^4.6.4",
     "wsmini": "^1.2.0"
   },
   "devDependencies": {

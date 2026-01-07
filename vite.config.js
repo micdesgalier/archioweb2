@@ -26,6 +26,9 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         },
       },
+      allowedHosts: [
+      'routine-trace-numeric-transaction.trycloudflare.com'
+      ]
     },
   };
 });
