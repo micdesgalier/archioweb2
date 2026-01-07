@@ -3,7 +3,6 @@ import express from 'express';
 import { login } from '../api/auth.mjs';
 import { logout } from '../api/logout.mjs';
 
-import { Book } from '../models/Book.mjs';
 import { User } from '../models/User.mjs';
 import { City } from '../models/City.mjs';
 import { Institution } from '../models/Institution.mjs';
@@ -26,17 +25,6 @@ const router = express.Router();
 router.post('/auth/login', login);
 router.post('/auth/logout', logout);
 
-// Books
-router.get('/books', async (req, res) => {
-  try {
-    const books = await Book.find();
-    res.json(books);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Impossible de récupérer les livres' });
-  }
-});
-
 // Users
 router.get('/users', async (req, res) => {
   try {
@@ -46,6 +34,29 @@ router.get('/users', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Impossible de récupérer les utilisateurs' });
+  }
+});
+
+router.get('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'id est un ObjectId valide
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID utilisateur invalide' });
+    }
+
+    const user = await User.findById(id)
+      .populate('city_id institution_id field_id');
+
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Impossible de récupérer l’utilisateur' });
   }
 });
 
@@ -60,6 +71,28 @@ router.get('/cities', async (req, res) => {
   }
 });
 
+router.get('/cities/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'id est un ObjectId valide
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de ville invalide' });
+    }
+
+    const city = await City.findById(id);
+
+    if (!city) {
+      return res.status(404).json({ error: 'Ville introuvable' });
+    }
+
+    res.json(city);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Impossible de récupérer la ville' });
+  }
+});
+
 // Institutions
 router.get('/institutions', async (req, res) => {
   try {
@@ -68,6 +101,28 @@ router.get('/institutions', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Impossible de récupérer les institutions" });
+  }
+});
+
+router.get('/institutions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'id est un ObjectId valide
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de l’institution invalide' });
+    }
+
+    const institution = await Institution.findById(id).populate('city_id');
+
+    if (!institution) {
+      return res.status(404).json({ error: 'Institution introuvable' });
+    }
+
+    res.json(institution);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer l’institution" });
   }
 });
 
@@ -82,6 +137,28 @@ router.get('/fields', async (req, res) => {
   }
 });
 
+router.get('/fields/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'id est un ObjectId valide
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de filière invalide' });
+    }
+
+    const field = await FieldOfStudy.findById(id);
+
+    if (!field) {
+      return res.status(404).json({ error: 'Filière introuvable' });
+    }
+
+    res.json(field);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Impossible de récupérer la filière' });
+  }
+});
+
 // Subjects
 router.get('/subjects', async (req, res) => {
   try {
@@ -90,6 +167,28 @@ router.get('/subjects', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Impossible de récupérer les matières" });
+  }
+});
+
+router.get('/subjects/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'id est un ObjectId valide
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de matière invalide' });
+    }
+
+    const subject = await Subject.findById(id).populate('field_id');
+
+    if (!subject) {
+      return res.status(404).json({ error: 'Matière introuvable' });
+    }
+
+    res.json(subject);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer la matière" });
   }
 });
 
@@ -105,6 +204,29 @@ router.get('/user-subject-profiles', async (req, res) => {
   }
 });
 
+router.get('/user-subject-profiles/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'id est un ObjectId valide
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de profil utilisateur-matière invalide' });
+    }
+
+    const profile = await UserSubjectProfile.findById(id)
+      .populate('user_id subject_id');
+
+    if (!profile) {
+      return res.status(404).json({ error: 'Profil utilisateur-matière introuvable' });
+    }
+
+    res.json(profile);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer le profil utilisateur-matière" });
+  }
+});
+
 // Study groups
 router.get('/study-groups', async (req, res) => {
   try {
@@ -114,6 +236,29 @@ router.get('/study-groups', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Impossible de récupérer les study groups" });
+  }
+});
+
+router.get('/study-groups/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'id est un ObjectId valide
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de study group invalide' });
+    }
+
+    const group = await StudyGroup.findById(id)
+      .populate('creator_id subject_id city_id');
+
+    if (!group) {
+      return res.status(404).json({ error: 'Study group introuvable' });
+    }
+
+    res.json(group);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer le study group" });
   }
 });
 
@@ -128,6 +273,29 @@ router.get('/group-members', async (req, res) => {
   }
 });
 
+router.get('/group-members/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'id est un ObjectId valide
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de membre de groupe invalide' });
+    }
+
+    const member = await GroupMember.findById(id)
+      .populate('user_id group_id');
+
+    if (!member) {
+      return res.status(404).json({ error: 'Membre de groupe introuvable' });
+    }
+
+    res.json(member);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer le membre de groupe" });
+  }
+});
+
 // Conversations
 router.get('/conversations', async (req, res) => {
   try {
@@ -139,6 +307,28 @@ router.get('/conversations', async (req, res) => {
   }
 });
 
+router.get('/conversations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log("A");
+    // Vérifier que l'id est un ObjectId valide
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de conversation invalide' });
+    }
+
+    const convo = await Conversation.findById(id).populate('group_id');
+
+    if (!convo) {
+      return res.status(404).json({ error: 'Conversation introuvable' });
+    }
+
+    res.json(convo);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer la conversation" });
+  }
+});
+
 // Conversation participants
 router.get('/conversation-participants', async (req, res) => {
   try {
@@ -147,6 +337,29 @@ router.get('/conversation-participants', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Impossible de récupérer les participants de conversations" });
+  }
+});
+
+router.get('/conversation-participants/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'id est un ObjectId valide
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de participant de conversation invalide' });
+    }
+
+    const participant = await ConversationParticipant.findById(id)
+      .populate('conversation_id user_id');
+
+    if (!participant) {
+      return res.status(404).json({ error: 'Participant de conversation introuvable' });
+    }
+
+    res.json(participant);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer le participant de conversation" });
   }
 });
 
@@ -165,6 +378,29 @@ router.get('/messages', async (req, res) => {
   }
 });
 
+router.get('/messages/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérifier que l'id est un ObjectId valide
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de message invalide' });
+    }
+
+    const message = await Message.findById(id)
+      .populate('sender_id conversation_id parent_id');
+
+    if (!message) {
+      return res.status(404).json({ error: 'Message introuvable' });
+    }
+
+    res.json(message);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer le message" });
+  }
+});
+
 // Attachments
 router.get('/attachments', async (req, res) => {
   try {
@@ -173,6 +409,29 @@ router.get('/attachments', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Impossible de récupérer les pièces jointes" });
+  }
+});
+
+router.get('/attachments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validation ObjectId Mongo
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de pièce jointe invalide' });
+    }
+
+    const attachment = await Attachment.findById(id)
+      .populate('message_id');
+
+    if (!attachment) {
+      return res.status(404).json({ error: 'Pièce jointe introuvable' });
+    }
+
+    res.json(attachment);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer la pièce jointe" });
   }
 });
 
@@ -187,6 +446,29 @@ router.get('/user-availabilities', async (req, res) => {
   }
 });
 
+router.get('/user-availabilities/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validation ObjectId Mongo
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de disponibilité invalide' });
+    }
+
+    const availability = await UserAvailability.findById(id)
+      .populate('user_id');
+
+    if (!availability) {
+      return res.status(404).json({ error: 'Disponibilité utilisateur introuvable' });
+    }
+
+    res.json(availability);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer la disponibilité utilisateur" });
+  }
+});
+
 // External calendars
 router.get('/external-calendars', async (req, res) => {
   try {
@@ -198,6 +480,29 @@ router.get('/external-calendars', async (req, res) => {
   }
 });
 
+router.get('/external-calendars/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validation ObjectId Mongo
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de calendrier externe invalide' });
+    }
+
+    const calendar = await ExternalCalendar.findById(id)
+      .populate('user_id');
+
+    if (!calendar) {
+      return res.status(404).json({ error: 'Calendrier externe introuvable' });
+    }
+
+    res.json(calendar);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer le calendrier externe" });
+  }
+});
+
 // Auth sessions
 router.get('/auth-sessions', async (req, res) => {
   try {
@@ -206,6 +511,29 @@ router.get('/auth-sessions', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Impossible de récupérer les sessions d'authentification" });
+  }
+});
+
+router.get('/auth-sessions/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Validation ObjectId Mongo
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID de session invalide' });
+    }
+
+    const session = await AuthSession.findById(id)
+      .populate('user_id');
+
+    if (!session) {
+      return res.status(404).json({ error: "Session d'authentification introuvable" });
+    }
+
+    res.json(session);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer la session d'authentification" });
   }
 });
 
