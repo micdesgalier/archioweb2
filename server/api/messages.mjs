@@ -1,4 +1,4 @@
-import { Message } from '../models/Message.mjs';
+import Message from '../models/Message.mjs';
 import { wsServer } from '../store/wsStore.mjs';
 
 /**

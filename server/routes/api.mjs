@@ -15,7 +15,7 @@ import { StudyGroup } from '../models/StudyGroup.mjs';
 import { GroupMember } from '../models/GroupMember.mjs';
 import { Conversation } from '../models/Conversation.mjs';
 import { ConversationParticipant } from '../models/ConversationParticipant.mjs';
-import { Message } from '../models/Message.mjs';
+import Message from '../models/Message.mjs';
 import { Attachment } from '../models/Attachment.mjs';
 import { UserAvailability } from '../models/UserAvailability.mjs';
 import { ExternalCalendar } from '../models/ExternalCalendar.mjs';

@@ -36,16 +36,18 @@ export async function seedMessages() {
         content,
       });
 
+
       if (exists) {
         console.log(`Message exists: conv=${conv._id} sender=${sender.email}`);
         continue;
       }
 
       await Message.create({
-        conversation_id: conv._id,
-        sender_id: sender._id,
+        from: sender.email || sender._id.toString(),   // ou email si tu enregistres un identifiant
+        to: conv.type === 'private'
+              ? users.filter(u => u._id.toString() !== sender._id.toString())[0].email
+              : conv.group_id._id.toString(),         // ou l’ID du groupe si tu veux
         content,
-        message_type: 'text',
       });
 
       console.log(`Seeded message: conv=${conv._id} sender=${sender.email}`);
