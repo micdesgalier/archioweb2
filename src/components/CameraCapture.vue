@@ -6,7 +6,7 @@
   - Fallback file input (capture attribute) pour vieux navigateurs/iOS webviews
 */
 
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 
 const videoRef = ref(null);
 const canvasRef = ref(null);
@@ -20,13 +20,19 @@ const capturedBlob = ref(null);
 const uploading = ref(false);
 const facing = ref('environment'); // 'environment' (back) or 'user' (front)
 
+// Computed property pour l'URL de prévisualisation
+const previewUrl = computed(() => {
+  if (!capturedBlob.value) return null;
+  return URL.createObjectURL(capturedBlob.value);
+});
+
 function isProbablyMobile() {
   return /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
 }
 
 async function startCamera() {
   if (!isSupported) {
-    errorMsg.value = 'La capture vidéo n’est pas prise en charge par ce navigateur.';
+    errorMsg.value = "La capture vidéo n'est pas prise en charge par ce navigateur.";
     return;
   }
 
@@ -52,7 +58,7 @@ async function startCamera() {
     isStreaming.value = true;
   } catch (err) {
     console.error('getUserMedia error:', err);
-    errorMsg.value = 'Impossible d’accéder à la caméra — autorisation refusée ou capteur indisponible.';
+    errorMsg.value = "Impossible d'accéder à la caméra — autorisation refusée ou capteur indisponible.";
     isStreaming.value = false;
   }
 }
@@ -119,7 +125,9 @@ async function uploadCaptured(url = '/api/upload-photo') {
 function onFileInputChange(e) {
   const file = e.target.files && e.target.files[0];
   if (!file) return;
+  console.log('File selected:', file.name, file.type, file.size);
   capturedBlob.value = file;
+  e.target.value = ''; // permet de resélectionner la même image
 }
 
 onMounted(() => {
@@ -133,6 +141,10 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   stopCamera();
+  // Nettoyage des URL objets
+  if (previewUrl.value) {
+    URL.revokeObjectURL(previewUrl.value);
+  }
 });
 </script>
 
@@ -140,36 +152,8 @@ onBeforeUnmount(() => {
   <div class="p-4 max-w-xl mx-auto">
     <h3 class="text-lg font-semibold mb-3">Prendre une photo</h3>
 
-    <div v-if="isSupported" class="space-y-3">
-      <div v-if="!isStreaming" class="flex gap-2">
-        <button @click="startCamera" class="px-3 py-2 rounded bg-blue-600 text-white">Ouvrir la caméra</button>
-        <button @click="toggleFacing" class="px-3 py-2 rounded bg-gray-200">Changer caméra</button>
-      </div>
-
-      <div v-if="errorMsg" class="text-red-600">{{ errorMsg }}</div>
-
-      <video
-        v-show="isStreaming"
-        ref="videoRef"
-        autoplay
-        playsinline
-        muted
-        class="w-full rounded shadow"
-        style="background: #000"
-      ></video>
-
-      <div v-if="isStreaming" class="flex gap-2 mt-2">
-        <button @click="capture" class="px-3 py-2 rounded bg-green-600 text-white">Capturer</button>
-        <button @click="stopCamera" class="px-3 py-2 rounded bg-red-600 text-white">Fermer</button>
-      </div>
-
-      <!-- Canvas (hidden) -->
-      <canvas ref="canvasRef" class="hidden"></canvas>
-    </div>
-
     <!-- Fallback: input file (works on all mobiles; capture requests opening camera) -->
     <div class="mt-4">
-      <label class="block mb-2">Ou téléverse une photo (appareil photo natif sur mobile):</label>
       <input
         type="file"
         accept="image/*"
@@ -183,7 +167,8 @@ onBeforeUnmount(() => {
     <div v-if="capturedBlob" class="mt-4">
       <h4 class="font-medium">Aperçu</h4>
       <img
-        :src="URL.createObjectURL(capturedBlob)"
+        v-if="previewUrl"
+        :src="previewUrl"
         alt="preview"
         class="w-full max-h-96 object-contain rounded shadow mt-2"
       />
@@ -191,11 +176,14 @@ onBeforeUnmount(() => {
         <button @click="uploadCaptured()" :disabled="uploading" class="px-3 py-2 rounded bg-indigo-600 text-white">
           {{ uploading ? 'Envoi...' : 'Envoyer la photo' }}
         </button>
-        <button @click="() => { capturedBlob = null }" class="px-3 py-2 rounded bg-gray-200">Reprendre</button>
+        <button @click="capturedBlob = null" class="px-3 py-2 rounded bg-gray-200">Reprendre</button>
       </div>
     </div>
 
     <div v-else class="text-sm text-gray-500 mt-3">Aucune photo capturée</div>
+
+    <!-- Canvas caché pour la capture vidéo -->
+    <canvas ref="canvasRef" class="hidden"></canvas>
   </div>
 </template>
 
