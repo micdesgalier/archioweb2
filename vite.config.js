@@ -5,7 +5,7 @@ import { quasar, transformAssetUrls } from '@quasar/vite-plugin';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const backendHost = process.env.VITE_WS_HOST || env.VITE_WS_HOST || 'localhost';
-  const backendPort = process.env.BACKEND_PORT || env.BACKEND_PORT || 3000;
+  const backendPort = process.env.BACKEND_PORT || env.BACKEND_PORT || 8989;
 
   return {
     plugins: [

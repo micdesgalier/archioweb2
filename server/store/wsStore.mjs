@@ -11,14 +11,15 @@ function authCallback(token, request) {
     const cookies = parseCookies(request.headers.cookie);
     const authToken = cookies?.auth_token ?? token;
     const decoded = jwt.verify(authToken, JWT_SECRET, { algorithms: ['HS256'] });
-    const username = decoded.sub;
+    
+    // Use firstName as username for WebSocket (fallback to sub for legacy tokens)
+    const username = decoded.firstName || decoded.sub;
 
     if (!username) return false;
-    if (!/^[A-Za-z]+$/.test(username)) return false;
-    if (username.length > 20) return false;
+    if (username.length > 50) return false;
 
     const color = getColorForUsername(username);
-    return { username, color };
+    return { username, color, email: decoded.email, userId: decoded.sub };
   } catch (err) {
     return false;
   }

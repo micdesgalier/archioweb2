@@ -1,7 +1,9 @@
 // server/routes/index.mjs
 import express from 'express';
+import jwt from 'jsonwebtoken';
 import { login, register } from '../api/auth.mjs';
 import { logout } from '../api/logout.mjs';
+import { getConversation, getConversations, sendMessage, markAsRead } from '../api/messages.mjs';
 
 import { Book } from '../models/Book.mjs';
 import { User } from '../models/User.mjs';
@@ -21,11 +23,39 @@ import { ExternalCalendar } from '../models/ExternalCalendar.mjs';
 import { AuthSession } from '../models/AuthSession.mjs';
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET;
+
+// Auth middleware
+function authMiddleware(req, res, next) {
+  try {
+    // Get token from Authorization header or cookie
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') 
+      ? authHeader.slice(7) 
+      : req.cookies?.auth_token;
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Token requis' });
+    }
+    
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ error: 'Token invalide' });
+  }
+}
 
 // Auth routes
 router.post('/auth/login', login);
 router.post('/auth/register', register);
 router.post('/auth/logout', logout);
+
+// Private messaging routes (require authentication)
+router.get('/pm/conversations', authMiddleware, getConversations);
+router.get('/pm/conversation/:partner', authMiddleware, getConversation);
+router.post('/pm/send', authMiddleware, sendMessage);
+router.post('/pm/read/:partner', authMiddleware, markAsRead);
 
 // Books
 router.get('/books', async (req, res) => {

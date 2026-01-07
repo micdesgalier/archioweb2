@@ -1,66 +1,36 @@
-// server/models/message.mjs
 import mongoose from 'mongoose';
 
-const { Schema, model } = mongoose;
-
-const messageSchema = new Schema({
-  // Conversation liée
-  conversation_id: {
-    type: Schema.Types.ObjectId,
-    ref: 'Conversation',
+const messageSchema = new mongoose.Schema({
+  from: {
+    type: String,
     required: true,
+    index: true
   },
-
-  // Expéditeur
-  sender_id: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
+  to: {
+    type: String,
     required: true,
+    index: true
   },
-
-  // Contenu texte (optionnel si pièce jointe)
   content: {
     type: String,
-  },
-
-  message_type: {
-    type: String,
-    enum: ['text', 'image', 'video', 'file'],
-    default: 'text',
     required: true,
+    maxlength: 500
   },
-
-  // Réponse à un message (thread)
-  parent_id: {
-    type: Schema.Types.ObjectId,
-    ref: 'Message',
+  timestamp: {
+    type: Date,
+    default: Date.now,
+    index: true
   },
-}, {
-  timestamps: { createdAt: 'created_at', updatedAt: false },
-  toJSON: {
-    transform: (doc, ret) => {
-      ret.id = ret._id;
-      delete ret._id;
-      delete ret.__v;
-      return ret;
-    },
-  },
-});
-
-// Index essentiels pour la messagerie
-messageSchema.index({ conversation_id: 1, created_at: 1 });
-messageSchema.index({ sender_id: 1 });
-messageSchema.index({ parent_id: 1 });
-
-// Règles métier
-messageSchema.pre('save', async function () {
-  // Un message texte doit avoir du contenu
-  if (this.message_type === 'text' && (!this.content || !this.content.trim())) {
-    throw new Error('Un message de type "text" doit contenir du texte.');
+  read: {
+    type: Boolean,
+    default: false
   }
-
-  // Les autres types peuvent avoir content null (URL fichier gérée ailleurs)
+}, {
+  timestamps: true
 });
 
-export const Message = model('Message', messageSchema);
-export default Message;
+// Index for efficient conversation queries
+messageSchema.index({ from: 1, to: 1, timestamp: -1 });
+messageSchema.index({ to: 1, from: 1, timestamp: -1 });
+
+export const Message = mongoose.model('Message', messageSchema);
