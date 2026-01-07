@@ -33,4 +33,5 @@ const messageSchema = new mongoose.Schema({
 messageSchema.index({ from: 1, to: 1, timestamp: -1 });
 messageSchema.index({ to: 1, from: 1, timestamp: -1 });
 
-export const Message = mongoose.model('Message', messageSchema);
+const Message = mongoose.model('Message', messageSchema);
+export default Message;
