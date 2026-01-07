@@ -4,10 +4,14 @@
   import { isAuth, ws, users, allMsg } from '@/store/chat.js';
   import TheChatToolbar from './components/TheChatToolbar.vue';
   import TheLoginPage from './components/TheLoginPage.vue';
+  import TheSignUpPage from './components/TheSignUpPage.vue';
   import TheChatForm from './components/TheChatForm.vue';
   import TheChatMessagesList from './components/TheChatMessagesList.vue';
   import TheChatUsersList from './components/TheChatUsersList.vue';
   import { connectToChat } from '@/store/chat.js';
+
+  // Auth page state: 'login' or 'signup'
+  const authPage = ref('login');
 
   const $q = useQuasar();
 
@@ -41,8 +45,11 @@
 </script>
 
 <template>
-  <!-- Page de login sans layout Quasar -->
-  <TheLoginPage v-if="!isAuth" />
+  <!-- Pages d'authentification sans layout Quasar -->
+  <template v-if="!isAuth">
+    <TheLoginPage v-if="authPage === 'login'" @switch-to-signup="authPage = 'signup'" />
+    <TheSignUpPage v-else @switch-to-login="authPage = 'login'" />
+  </template>
   
   <!-- Chat avec layout Quasar -->
   <q-layout v-else view="hHh lpr lFf">
