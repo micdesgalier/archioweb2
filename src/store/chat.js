@@ -4,11 +4,13 @@ import { fetchJson } from '@/utils/fetchJson';
 
 export const isAuth = ref(false);
 export const users = ref([]);
+export const allUsers = ref([]); // All users from database
 export const allMsg = ref([]);
 export const privateMessages = ref({}); // { username: [messages] }
 export const conversations = ref([]); // List of conversation partners with last message
 export const showUsersList = ref(false);
 export const currentUsername = ref('');
+export const currentUserId = ref('');
 export const authToken = ref('');
 
 const wsHost = import.meta.env.VITE_WS_HOST || 'localhost';
@@ -48,6 +50,19 @@ function addPrivateMessage(msg) {
     privateMessages.value[partner].push(msg);
     // Sort by timestamp
     privateMessages.value[partner].sort((a, b) => a.timestamp - b.timestamp);
+  }
+}
+
+// Load all users from database
+export async function loadAllUsers() {
+  try {
+    const response = await fetch('/api/users');
+    if (response.ok) {
+      const data = await response.json();
+      allUsers.value = data;
+    }
+  } catch (err) {
+    console.error('Error loading users:', err);
   }
 }
 
@@ -163,6 +178,9 @@ export async function connectToChat(token) {
   if (decoded?.firstName) {
     currentUsername.value = decoded.firstName;
   }
+  if (decoded?.sub) {
+    currentUserId.value = decoded.sub;
+  }
   
   // Connect to WebSocket
   await ws.connect(token);
@@ -185,6 +203,9 @@ export async function connectToChat(token) {
   
   isAuth.value = true;
   
+  // Load all users from database
+  await loadAllUsers();
+  
   // Load existing conversations from database
   await loadConversations();
 }
@@ -193,10 +214,12 @@ export async function logout() {
   await fetchJson({ url: '/api/auth/logout', method: 'POST' });
   isAuth.value = false;
   users.value = [];
+  allUsers.value = [];
   allMsg.value = [];
   privateMessages.value = {};
   conversations.value = [];
   currentUsername.value = '';
+  currentUserId.value = '';
   authToken.value = '';
   ws.close();
 }
