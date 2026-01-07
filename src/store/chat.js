@@ -53,10 +53,19 @@ function addPrivateMessage(msg) {
   }
 }
 
-// Load all users from database
+// Load all users from database (with their subject profiles)
 export async function loadAllUsers() {
   try {
-    const response = await fetch('/api/users');
+    // Try to get users with subjects first
+    let response = await fetch('/api/users-with-subjects');
+    if (response.ok) {
+      const data = await response.json();
+      allUsers.value = data;
+      return;
+    }
+    
+    // Fallback to regular users endpoint
+    response = await fetch('/api/users');
     if (response.ok) {
       const data = await response.json();
       allUsers.value = data;

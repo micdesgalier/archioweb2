@@ -79,6 +79,46 @@ router.get('/users', async (req, res) => {
   }
 });
 
+// Get users with their subject profiles (for suggestions)
+router.get('/users-with-subjects', async (req, res) => {
+  try {
+    const users = await User.find()
+      .populate('city_id institution_id field_id')
+      .lean();
+    
+    // Get all subject profiles
+    const profiles = await UserSubjectProfile.find()
+      .populate('subject_id')
+      .lean();
+    
+    // Group profiles by user_id
+    const profilesByUser = {};
+    profiles.forEach(profile => {
+      const odaUserId = profile.user_id.toString();
+      if (!profilesByUser[odaUserId]) {
+        profilesByUser[odaUserId] = [];
+      }
+      profilesByUser[odaUserId].push({
+        subject: profile.subject_id?.name || 'Unknown',
+        canHelp: profile.can_help,
+        needsHelp: profile.needs_help,
+        level: profile.level
+      });
+    });
+    
+    // Merge users with their profiles
+    const usersWithSubjects = users.map(user => ({
+      ...user,
+      subjects: profilesByUser[user._id.toString()] || []
+    }));
+    
+    res.json(usersWithSubjects);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Impossible de récupérer les utilisateurs avec matières' });
+  }
+});
+
 router.get('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;

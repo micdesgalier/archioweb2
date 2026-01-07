@@ -24,66 +24,88 @@ const upcomingSessions = ref([
   }
 ]);
 
-// Suggested users based on interests
+// Single background color for all individual user cards
+const userCardBgColor = '#DBEAFE'; // Light blue for all users
+
+// Background colors for group cards (different colors)
+const groupBgColors = ['#FEF3C7', '#D1FAE5', '#FEE2E2', '#E0E7FF', '#FCE7F3'];
+
+// Suggested users based on their subject profiles
 const suggestedUsers = computed(() => {
-  return allUsers.value.slice(0, 6).map((user, index) => ({
-    id: user._id,
-    name: user.first_name,
-    fullName: `${user.first_name} ${user.last_name}`,
-    avatar: user.profile_picture_url || `https://i.pravatar.cc/100?u=${user._id}`,
-    tags: getRandomTags(index),
-    bgColor: getBgColor(index)
-  }));
+  return allUsers.value.slice(0, 8).map((user, index) => {
+    // Get ONE subject where canHelp=true and ONE where needsHelp=true
+    const tags = [];
+    
+    if (user.subjects && user.subjects.length > 0) {
+      // Find first subject where user can help (green)
+      const canHelpSubject = user.subjects.find(s => s.canHelp);
+      if (canHelpSubject) {
+        tags.push({
+          name: canHelpSubject.subject,
+          canHelp: true,
+          needsHelp: false
+        });
+      }
+      
+      // Find first subject where user needs help (yellow)
+      const needsHelpSubject = user.subjects.find(s => s.needsHelp);
+      if (needsHelpSubject) {
+        tags.push({
+          name: needsHelpSubject.subject,
+          canHelp: false,
+          needsHelp: true
+        });
+      }
+    }
+    
+    return {
+      id: user._id || user.id,
+      name: user.first_name,
+      fullName: `${user.first_name} ${user.last_name}`,
+      avatar: user.avatar_url || `https://i.pravatar.cc/100?u=${user._id || user.id}`,
+      tags: tags,
+      bgColor: userCardBgColor // Same color for all users
+    };
+  });
 });
 
-// Demo groups
+// Demo groups (with different background colors)
 const recommendedGroups = ref([
   {
     id: 'g1',
     name: 'Groupe HEIG-VD',
     avatar: 'https://i.pravatar.cc/100?img=50',
-    tags: ['programmation', 'maths'],
-    bgColor: '#FEF3C7'
+    tags: [
+      { name: 'programmation', isGroup: true }
+    ],
+    bgColor: groupBgColors[0]
   },
   {
     id: 'g2',
     name: 'Lausanne - Math',
     avatar: 'https://i.pravatar.cc/100?img=51',
-    tags: ['maths', 'dev'],
-    bgColor: '#D1FAE5'
+    tags: [
+      { name: 'maths', isGroup: true }
+    ],
+    bgColor: groupBgColors[1]
   },
   {
     id: 'g3',
     name: 'EPFL - Prog',
     avatar: 'https://i.pravatar.cc/100?img=52',
-    tags: ['français', 'prog'],
-    bgColor: '#FEE2E2'
+    tags: [
+      { name: 'prog', isGroup: true }
+    ],
+    bgColor: groupBgColors[2]
   }
 ]);
 
-function getRandomTags(index) {
-  const allTags = ['programmation', 'maths', 'dev', 'français', 'physique', 'chimie'];
-  const tags = [];
-  tags.push(allTags[index % allTags.length]);
-  tags.push(allTags[(index + 2) % allTags.length]);
-  return tags;
-}
-
-function getBgColor(index) {
-  const colors = ['#DBEAFE', '#E0E7FF', '#FCE7F3', '#D1FAE5', '#FEF3C7', '#FEE2E2'];
-  return colors[index % colors.length];
-}
-
+// Tag color: green for canHelp, yellow for needsHelp, blue for groups
 function getTagColor(tag) {
-  const colors = {
-    'programmation': '#F97316',
-    'maths': '#FBBF24',
-    'dev': '#22C55E',
-    'français': '#EF4444',
-    'physique': '#8B5CF6',
-    'chimie': '#06B6D4'
-  };
-  return colors[tag] || '#6B7280';
+  if (tag.isGroup) return '#3B82F6'; // Blue for groups
+  if (tag.canHelp) return '#22C55E'; // Green
+  if (tag.needsHelp) return '#FBBF24'; // Yellow/Orange
+  return '#6B7280'; // Gray default
 }
 
 function openUserChat(user) {
@@ -171,15 +193,16 @@ onMounted(() => {
           <span class="suggestion-name">{{ user.name }}</span>
           <div class="suggestion-tags">
             <span 
-              v-for="tag in user.tags" 
-              :key="tag"
+              v-for="(tag, idx) in user.tags.slice(0, 2)" 
+              :key="idx"
               class="tag"
               :style="{ backgroundColor: getTagColor(tag) }"
             >
-              {{ tag }}
+              {{ tag.name }}
             </span>
+            <span v-if="user.tags.length === 0" class="no-tags">Nouveau</span>
           </div>
-          <button class="chat-btn">
+          <button class="chat-btn" @click.stop="openUserChat(user)">
             <q-icon name="chat_bubble_outline" />
           </button>
         </div>
@@ -206,12 +229,12 @@ onMounted(() => {
           <span class="suggestion-name">{{ group.name }}</span>
           <div class="suggestion-tags">
             <span 
-              v-for="tag in group.tags" 
-              :key="tag"
+              v-for="(tag, idx) in group.tags" 
+              :key="idx"
               class="tag"
               :style="{ backgroundColor: getTagColor(tag) }"
             >
-              {{ tag }}
+              {{ tag.name }}
             </span>
           </div>
           <button class="chat-btn">
@@ -220,6 +243,18 @@ onMounted(() => {
         </div>
       </div>
     </section>
+
+    <!-- Color Legend -->
+    <div class="color-legend">
+      <div class="legend-item">
+        <span class="legend-dot" style="background: #22C55E;"></span>
+        <span>Peut aider</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-dot" style="background: #FBBF24;"></span>
+        <span>A besoin d'aide</span>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -440,6 +475,9 @@ onMounted(() => {
   flex-wrap: wrap;
   gap: 6px;
   justify-content: center;
+  min-height: 50px;
+  align-items: flex-start;
+  align-content: flex-start;
 }
 
 .tag {
@@ -448,6 +486,12 @@ onMounted(() => {
   font-size: 11px;
   font-weight: 500;
   color: white;
+}
+
+.no-tags {
+  font-size: 12px;
+  color: var(--sc-text-secondary);
+  font-style: italic;
 }
 
 .chat-btn {
@@ -468,6 +512,29 @@ onMounted(() => {
   font-size: 18px;
 }
 
+/* Color Legend */
+.color-legend {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px 20px;
+  margin-top: 8px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--sc-text-secondary);
+}
+
+.legend-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
 /* Desktop Responsive */
 @media (min-width: 768px) {
   .home-page {
@@ -484,4 +551,3 @@ onMounted(() => {
   }
 }
 </style>
-
