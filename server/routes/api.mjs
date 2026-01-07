@@ -1,6 +1,6 @@
 // server/routes/index.mjs
 import express from 'express';
-import { login } from '../api/auth.mjs';
+import { login, register } from '../api/auth.mjs';
 import { logout } from '../api/logout.mjs';
 
 import { User } from '../models/User.mjs';
@@ -23,6 +23,7 @@ const router = express.Router();
 
 // Auth routes
 router.post('/auth/login', login);
+router.post('/auth/register', register);
 router.post('/auth/logout', logout);
 
 // Users

@@ -1,0 +1,82 @@
+/* Variables CSS globales pour Study Connect */
+:root {
+  /* Couleurs principales - Bleu Study Connect */
+  --sc-primary-blue: #0046FB;
+  --sc-primary-blue-dark: #0035C0;
+  --sc-primary-blue-light: #0066FF;
+  --sc-gradient-start: #0046FB;
+  --sc-gradient-end: #0035C0;
+  
+  /* Couleurs de texte */
+  --sc-text-primary: #2C3E50;
+  --sc-text-secondary: #7F8C8D;
+  --sc-text-white: #FFFFFF;
+  
+  /* Couleurs de fond */
+  --sc-bg-white: #FFFFFF;
+  --sc-bg-light-gray: #F5F7FA;
+  --sc-bg-input: #F0F2F5;
+  
+  /* Espacements */
+  --sc-spacing-xs: 8px;
+  --sc-spacing-sm: 16px;
+  --sc-spacing-md: 24px;
+  --sc-spacing-lg: 32px;
+  --sc-spacing-xl: 48px;
+  
+  /* Bordures */
+  --sc-border-radius: 12px;
+  --sc-border-radius-sm: 8px;
+  --sc-border-radius-lg: 16px;
+  
+  /* Typographie */
+  --sc-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --sc-font-weight-bold: 700;
+  --sc-font-weight-semibold: 600;
+  --sc-font-weight-medium: 500;
+  --sc-font-weight-regular: 400;
+
+  /* Base typography */
+  line-height: 1.5;
+  font-weight: 400;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+/* Reset de base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--sc-font-family);
+  color: var(--sc-text-primary);
+  background-color: var(--sc-bg-white);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  margin: 0;
+  padding: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Base link styles */
+a {
+  font-weight: 500;
+  color: var(--sc-primary-blue);
+  text-decoration: inherit;
+}
+
+a:hover {
+  color: var(--sc-primary-blue-dark);
+}
+
+/* Base #app styles */
+#app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
