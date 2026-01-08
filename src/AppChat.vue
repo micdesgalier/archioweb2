@@ -1,5 +1,5 @@
 <script setup>
-  import { onMounted, onUnmounted, ref, watch } from 'vue';
+  import { onMounted, onUnmounted, ref, watch, computed } from 'vue';
   import { useQuasar } from 'quasar';
   import { isAuth, ws, users, allMsg } from '@/store/chat.js';
   import TheLoginPage from './components/TheLoginPage.vue';
@@ -24,6 +24,52 @@
   const currentChat = ref(null);
   const showCalendar = ref(false);
   const selectedDate = ref(new Date().toISOString().split('T')[0]);
+
+  // Calendar events data
+  const calendarEvents = ref([
+    {
+      id: 1,
+      title: 'Groupe HEIG-VD',
+      subject: 'Révisions prog',
+      date: '2026/03/18',
+      time: '14:00 - 16:30',
+      color: '#4A90D9'
+    },
+    {
+      id: 2,
+      title: 'Mattias',
+      subject: 'Aide pour maths',
+      date: '2026/03/19',
+      time: '17:00 - 19:00',
+      color: '#4A90D9'
+    },
+    {
+      id: 3,
+      title: 'Alice',
+      subject: 'Programmation Python',
+      date: '2026/01/07',
+      time: '10:00 - 11:30',
+      color: '#22C55E'
+    },
+    {
+      id: 4,
+      title: 'Bob',
+      subject: 'Algèbre linéaire',
+      date: '2026/01/10',
+      time: '14:00 - 15:30',
+      color: '#FBBF24'
+    }
+  ]);
+
+  // Get events for selected date
+  const eventsForSelectedDate = computed(() => {
+    return calendarEvents.value.filter(event => event.date === selectedDate.value);
+  });
+
+  // Get dates with events for calendar highlighting
+  const eventDates = computed(() => {
+    return calendarEvents.value.map(e => e.date);
+  });
 
   function handleSignupComplete() {
     console.log('🎉 Signup complete - setting needsOnboarding to true');
@@ -141,12 +187,32 @@
             <q-date 
               v-model="selectedDate" 
               flat 
-              class="full-width-calendar"
+              class="full-width-calendar app-calendar"
               first-day-of-week="1"
+              :events="eventDates"
+              event-color="primary"
+              color="primary"
             />
             <div class="calendar-events">
               <h3>Événements du jour</h3>
-              <p class="no-events">Aucun événement prévu</p>
+              <div v-if="eventsForSelectedDate.length > 0" class="events-list">
+                <div 
+                  v-for="event in eventsForSelectedDate" 
+                  :key="event.id"
+                  class="event-card"
+                  :style="{ borderLeftColor: event.color }"
+                >
+                  <div class="event-info">
+                    <span class="event-title">{{ event.title }}</span>
+                    <span class="event-subject">{{ event.subject }}</span>
+                  </div>
+                  <div class="event-time">
+                    <q-icon name="schedule" size="16px" />
+                    <span>{{ event.time }}</span>
+                  </div>
+                </div>
+              </div>
+              <p v-else class="no-events">Aucun événement prévu</p>
             </div>
           </div>
         </div>
@@ -286,7 +352,136 @@
   color: var(--sc-text-secondary);
   font-size: 14px;
   text-align: center;
+}
+
+/* Custom Calendar Styling */
+.app-calendar {
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+
+.app-calendar :deep(.q-date__header) {
+  background: linear-gradient(135deg, #4A90D9 0%, #3B7DC9 100%) !important;
+  color: white !important;
   padding: 20px;
+}
+
+.app-calendar :deep(.q-date__header-title) {
+  color: white !important;
+}
+
+.app-calendar :deep(.q-date__header-subtitle) {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.app-calendar :deep(.q-date__calendar) {
+  background: white;
+  padding: 8px;
+}
+
+.app-calendar :deep(.q-date__calendar-item--selected) {
+  background: #4A90D9 !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--today) {
+  border: 2px solid #4A90D9;
+}
+
+.app-calendar :deep(.q-date__navigation) {
+  color: var(--sc-text-primary);
+  padding: 8px 0;
+  border-bottom: 1px solid #E5E7EB;
+  margin-bottom: 8px;
+}
+
+.app-calendar :deep(.q-date__calendar-weekdays) {
+  border-bottom: 2px solid #E5E7EB;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.app-calendar :deep(.q-date__calendar-weekdays > div) {
+  color: #6B7280;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.app-calendar :deep(.q-date__calendar-days-container) {
+  padding-top: 8px;
+}
+
+.app-calendar :deep(.q-date__calendar-item) {
+  border-radius: 8px;
+  margin: 2px;
+}
+
+.app-calendar :deep(.q-date__calendar-item button) {
+  border-radius: 8px;
+}
+
+.app-calendar :deep(.q-date__calendar-item:hover button) {
+  background: #F0F7FF;
+}
+
+.app-calendar :deep(.q-date__event) {
+  background: #4A90D9 !important;
+}
+
+/* Week row separator */
+.app-calendar :deep(.q-date__calendar-days-container .q-date__calendar-item:nth-child(7n)) {
+  border-right: none;
+}
+
+.app-calendar :deep(.q-date__calendar-days-container > .row) {
+  border-bottom: 1px solid #F0F0F0;
+  padding: 4px 0;
+}
+
+/* Events List */
+.events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.event-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: white;
+  padding: 16px;
+  border-radius: 12px;
+  border-left: 4px solid var(--sc-primary-blue);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.event-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.event-title {
+  font-weight: 600;
+  color: var(--sc-text-primary);
+  font-size: 15px;
+}
+
+.event-subject {
+  color: var(--sc-text-secondary);
+  font-size: 13px;
+}
+
+.event-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--sc-text-secondary);
+  font-size: 13px;
+  background: #F5F5F5;
+  padding: 6px 12px;
+  border-radius: 20px;
 }
 
 /* Desktop Responsive */
