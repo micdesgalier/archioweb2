@@ -1,9 +1,17 @@
-// server/routes/index.mjs
 import express from 'express';
 import jwt from 'jsonwebtoken';
+
 import { login, register } from '../api/auth.mjs';
 import { logout } from '../api/logout.mjs';
-import { getConversation, getConversations, sendMessage, markAsRead } from '../api/messages.mjs';
+import {
+  getConversation,
+  getConversations,
+  sendMessage,
+  markAsRead
+} from '../api/messages.mjs';
+
+// 🔽 UPLOAD ROUTER
+import uploadRouter from './upload.mjs';
 
 import { User } from '../models/User.mjs';
 import { City } from '../models/City.mjs';
@@ -24,122 +32,106 @@ import { AuthSession } from '../models/AuthSession.mjs';
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 
-// Auth middleware
+/* =====================================================
+ * AUTH MIDDLEWARE
+ * ===================================================== */
 function authMiddleware(req, res, next) {
   try {
-    // Get token from Authorization header or cookie
     const authHeader = req.headers.authorization;
-    const token = authHeader?.startsWith('Bearer ') 
-      ? authHeader.slice(7) 
+    const token = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
       : req.cookies?.auth_token;
-    
+
     if (!token) {
       return res.status(401).json({ error: 'Token requis' });
     }
-    
+
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     req.user = decoded;
     next();
-  } catch (err) {
+  } catch {
     return res.status(401).json({ error: 'Token invalide' });
   }
 }
 
-// Auth routes
+/* =====================================================
+ * AUTH
+ * ===================================================== */
 router.post('/auth/login', login);
 router.post('/auth/register', register);
 router.post('/auth/logout', logout);
 
-// Private messaging routes (require authentication)
+/* =====================================================
+ * UPLOAD (IMPORTANT)
+ * ===================================================== */
+// POST /api/upload-photo
+router.use(uploadRouter);
+
+/* =====================================================
+ * PRIVATE MESSAGES
+ * ===================================================== */
 router.get('/pm/conversations', authMiddleware, getConversations);
 router.get('/pm/conversation/:partner', authMiddleware, getConversation);
 router.post('/pm/send', authMiddleware, sendMessage);
 router.post('/pm/read/:partner', authMiddleware, markAsRead);
 
-// Books
-router.get('/books', async (req, res) => {
-  try {
-    const books = await Book.find();
-    res.json(books);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Impossible de récupérer les livres' });
-  }
-});
-
-// Users
+/* =====================================================
+ * USERS
+ * ===================================================== */
 router.get('/users', async (req, res) => {
   try {
     const users = await User.find()
       .populate('city_id institution_id field_id');
     res.json(users);
-  } catch (err) {
-    console.error(err);
+  } catch {
     res.status(500).json({ error: 'Impossible de récupérer les utilisateurs' });
   }
 });
 
-// Get users with their subject profiles (for suggestions)
 router.get('/users-with-subjects', async (req, res) => {
   try {
     const users = await User.find()
       .populate('city_id institution_id field_id')
       .lean();
-    
-    // Get all subject profiles
+
     const profiles = await UserSubjectProfile.find()
       .populate('subject_id')
       .lean();
-    
-    // Group profiles by user_id
+
     const profilesByUser = {};
-    profiles.forEach(profile => {
-      const odaUserId = profile.user_id.toString();
-      if (!profilesByUser[odaUserId]) {
-        profilesByUser[odaUserId] = [];
-      }
-      profilesByUser[odaUserId].push({
-        subject: profile.subject_id?.name || 'Unknown',
-        canHelp: profile.can_help,
-        needsHelp: profile.needs_help,
-        level: profile.level
+    profiles.forEach(p => {
+      const id = p.user_id.toString();
+      profilesByUser[id] ??= [];
+      profilesByUser[id].push({
+        subject: p.subject_id?.name ?? 'Unknown',
+        canHelp: p.can_help,
+        needsHelp: p.needs_help,
+        level: p.level
       });
     });
-    
-    // Merge users with their profiles
-    const usersWithSubjects = users.map(user => ({
-      ...user,
-      subjects: profilesByUser[user._id.toString()] || []
-    }));
-    
-    res.json(usersWithSubjects);
-  } catch (err) {
-    console.error(err);
+
+    res.json(users.map(u => ({
+      ...u,
+      subjects: profilesByUser[u._id.toString()] ?? []
+    })));
+  } catch {
     res.status(500).json({ error: 'Impossible de récupérer les utilisateurs avec matières' });
   }
 });
 
 router.get('/users/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    // Vérifier que l'id est un ObjectId valide
-    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({ error: 'ID utilisateur invalide' });
-    }
-
-    const user = await User.findById(id)
-      .populate('city_id institution_id field_id');
-
-    if (!user) {
-      return res.status(404).json({ error: 'Utilisateur introuvable' });
-    }
-
-    res.json(user);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Impossible de récupérer l’utilisateur' });
+  if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+    return res.status(400).json({ error: 'ID utilisateur invalide' });
   }
+
+  const user = await User.findById(req.params.id)
+    .populate('city_id institution_id field_id');
+
+  if (!user) {
+    return res.status(404).json({ error: 'Utilisateur introuvable' });
+  }
+
+  res.json(user);
 });
 
 // Cities

@@ -17,6 +17,7 @@
     "jsonwebtoken": "^9.0.2",
     "mainloop.js": "^1.0.4",
     "mongoose": "^9.0.0",
+    "multer": "^2.0.2",
     "quasar": "^2.18.5",
     "vue": "^3.5.18",
     "vue-router": "^4.6.4",
