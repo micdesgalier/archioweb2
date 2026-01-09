@@ -89,20 +89,24 @@ const defaultSubjects = [
 // Formater les matières pour l'affichage (mode lecture)
 const subjects = computed(() => {
   if (isEditing.value) {
-    return editedSubjects.value;
+    return [];
   }
   // Si on a des données du serveur, les utiliser
   if (profileData.value?.subjects && profileData.value.subjects.length > 0) {
-    return profileData.value.subjects.map(subj => ({
-      name: subj.subject || subj.name,
-      color: subj.canHelp ? '#22C55E' : subj.needsHelp ? '#FBBF24' : '#6B7280'
-    }));
+    return profileData.value.subjects
+      .filter(subj => subj.canHelp || subj.needsHelp) // Filtrer seulement celles avec un statut
+      .map(subj => ({
+        name: subj.subject || subj.name,
+        color: subj.canHelp ? '#22C55E' : subj.needsHelp ? '#FBBF24' : '#6B7280'
+      }));
   }
   // Sinon, utiliser les matières par défaut pour un étudiant en informatique
-  return defaultSubjects.map(subj => ({
-    name: subj.name,
-    color: subj.canHelp ? '#22C55E' : subj.needsHelp ? '#FBBF24' : '#6B7280'
-  }));
+  return defaultSubjects
+    .filter(subj => subj.canHelp || subj.needsHelp)
+    .map(subj => ({
+      name: subj.name,
+      color: subj.canHelp ? '#22C55E' : subj.needsHelp ? '#FBBF24' : '#6B7280'
+    }));
 });
 
 // Formater les disponibilités pour l'affichage (mode lecture)
@@ -126,7 +130,7 @@ const availabilities = computed(() => {
 
 // Photo de profil
 const profilePicture = computed(() => {
-  return profileData.value?.avatar_url || `https://i.pravatar.cc/150?u=${currentUserId.value || 'default'}`;
+  return profileData.value?.avatar_url || 'https://i.pravatar.cc/150?img=1';
 });
 
 // Texte des études
@@ -216,15 +220,34 @@ function removeAvailability(index) {
 
 // Sauvegarder les modifications
 async function saveProfile() {
-  // TODO: Implémenter l'API de mise à jour du profil
-  // Pour l'instant, on simule juste la sauvegarde
   if (profileData.value) {
+    // Sauvegarder les informations de base
     profileData.value.first_name = editedFirstName.value;
     profileData.value.last_name = editedLastName.value;
     profileData.value.study_year = parseInt(editedStudyYear.value);
     if (profileData.value.field_id) {
       profileData.value.field_id.name = editedFieldName.value;
     }
+    
+    // Sauvegarder les matières (seulement celles avec canHelp ou needsHelp)
+    const subjectsToSave = editedSubjects.value.filter(subj => subj.canHelp || subj.needsHelp);
+    profileData.value.subjects = subjectsToSave.map(subj => ({
+      subject: subj.name,
+      name: subj.name,
+      canHelp: subj.canHelp,
+      needsHelp: subj.needsHelp,
+      color: subj.canHelp ? '#22C55E' : subj.needsHelp ? '#FBBF24' : '#6B7280'
+    }));
+    
+    // Sauvegarder les disponibilités
+    const validDates = editedAvailabilities.value.filter(date => date && date.trim());
+    profileData.value.availabilities = validDates.map(date => {
+      const dateObj = new Date(date);
+      return {
+        start_time: dateObj,
+        end_time: new Date(date + 'T23:59:59')
+      };
+    });
   }
   isEditing.value = false;
 }
@@ -345,20 +368,20 @@ async function handleLogout() {
               <span class="subject-name-edit">{{ subject.name }}</span>
               <div class="subject-actions">
                 <button 
-                  class="subject-help-btn" 
+                  class="subject-help-btn subject-help-btn-green" 
                   :class="{ active: subject.canHelp }"
                   @click="toggleCanHelp(index)"
                   title="Peut aider"
                 >
-                  <q-icon name="check_circle" size="16px" />
+                  <q-icon name="arrow_upward" size="18px" />
                 </button>
                 <button 
-                  class="subject-help-btn" 
+                  class="subject-help-btn subject-help-btn-yellow" 
                   :class="{ active: subject.needsHelp }"
                   @click="toggleNeedsHelp(index)"
                   title="A besoin d'aide"
                 >
-                  <q-icon name="help" size="16px" />
+                  <q-icon name="arrow_downward" size="18px" />
                 </button>
                 <button 
                   class="subject-remove-btn" 
@@ -630,24 +653,43 @@ async function handleLogout() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border: 2px solid rgba(255, 255, 255, 0.4);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.1);
   color: white;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.subject-help-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.6);
+.subject-help-btn-green {
+  background: rgba(34, 197, 94, 0.3);
+  border-color: rgba(34, 197, 94, 0.6);
 }
 
-.subject-help-btn.active {
-  background: rgba(255, 255, 255, 0.3);
-  border-color: rgba(255, 255, 255, 0.8);
+.subject-help-btn-green:hover {
+  background: rgba(34, 197, 94, 0.5);
+  border-color: rgba(34, 197, 94, 0.8);
+}
+
+.subject-help-btn-green.active {
+  background: #22C55E;
+  border-color: #22C55E;
+}
+
+.subject-help-btn-yellow {
+  background: rgba(251, 191, 36, 0.3);
+  border-color: rgba(251, 191, 36, 0.6);
+}
+
+.subject-help-btn-yellow:hover {
+  background: rgba(251, 191, 36, 0.5);
+  border-color: rgba(251, 191, 36, 0.8);
+}
+
+.subject-help-btn-yellow.active {
+  background: #FBBF24;
+  border-color: #FBBF24;
 }
 
 .subject-remove-btn {
