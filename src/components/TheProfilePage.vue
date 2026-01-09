@@ -14,6 +14,9 @@ const editedFirstName = ref('');
 const editedLastName = ref('');
 const editedStudyYear = ref('');
 const editedFieldName = ref('');
+const editedSubjects = ref([]);
+const editedAvailabilities = ref([]);
+const newSubjectName = ref('');
 
 // Charger les données du profil
 async function loadProfile() {
@@ -83,8 +86,11 @@ const defaultSubjects = [
   { name: 'Web Development', canHelp: true, needsHelp: false }
 ];
 
-// Formater les matières pour l'affichage
+// Formater les matières pour l'affichage (mode lecture)
 const subjects = computed(() => {
+  if (isEditing.value) {
+    return editedSubjects.value;
+  }
   // Si on a des données du serveur, les utiliser
   if (profileData.value?.subjects && profileData.value.subjects.length > 0) {
     return profileData.value.subjects.map(subj => ({
@@ -99,8 +105,12 @@ const subjects = computed(() => {
   }));
 });
 
-// Formater les disponibilités
+// Formater les disponibilités pour l'affichage (mode lecture)
 const availabilities = computed(() => {
+  if (isEditing.value) {
+    // En mode édition, on retourne un tableau vide car on utilise editedAvailabilities directement
+    return [];
+  }
   if (!profileData.value?.availabilities || profileData.value.availabilities.length === 0) {
     return [];
   }
@@ -133,7 +143,75 @@ const studiesText = computed(() => {
 
 // Activer le mode édition
 function enableEdit() {
+  // Initialiser les données éditables
+  if (profileData.value?.subjects && profileData.value.subjects.length > 0) {
+    editedSubjects.value = profileData.value.subjects.map(subj => ({
+      name: subj.subject || subj.name,
+      canHelp: subj.canHelp || false,
+      needsHelp: subj.needsHelp || false
+    }));
+  } else {
+    editedSubjects.value = [...defaultSubjects];
+  }
+  
+  // Initialiser les disponibilités
+  if (profileData.value?.availabilities && profileData.value.availabilities.length > 0) {
+    editedAvailabilities.value = profileData.value.availabilities.map(avail => {
+      const date = new Date(avail.start_time);
+      return date.toISOString().split('T')[0];
+    });
+  } else {
+    editedAvailabilities.value = [];
+  }
+  
   isEditing.value = true;
+}
+
+// Ajouter une nouvelle matière
+function addSubject() {
+  if (newSubjectName.value.trim()) {
+    editedSubjects.value.push({
+      name: newSubjectName.value.trim(),
+      canHelp: false,
+      needsHelp: false
+    });
+    newSubjectName.value = '';
+  }
+}
+
+// Supprimer une matière
+function removeSubject(index) {
+  editedSubjects.value.splice(index, 1);
+}
+
+// Toggle canHelp pour une matière
+function toggleCanHelp(index) {
+  const subject = editedSubjects.value[index];
+  subject.canHelp = !subject.canHelp;
+  if (subject.canHelp) {
+    subject.needsHelp = false;
+  }
+}
+
+// Toggle needsHelp pour une matière
+function toggleNeedsHelp(index) {
+  const subject = editedSubjects.value[index];
+  subject.needsHelp = !subject.needsHelp;
+  if (subject.needsHelp) {
+    subject.canHelp = false;
+  }
+}
+
+// Ajouter une disponibilité
+function addAvailability() {
+  const today = new Date();
+  const dateStr = today.toISOString().split('T')[0];
+  editedAvailabilities.value.push(dateStr);
+}
+
+// Supprimer une disponibilité
+function removeAvailability(index) {
+  editedAvailabilities.value.splice(index, 1);
 }
 
 // Sauvegarder les modifications
@@ -157,6 +235,9 @@ function cancelEdit() {
   editedLastName.value = profileData.value?.last_name || '';
   editedStudyYear.value = profileData.value?.study_year || '';
   editedFieldName.value = profileData.value?.field_id?.name || '';
+  editedSubjects.value = [];
+  editedAvailabilities.value = [];
+  newSubjectName.value = '';
   isEditing.value = false;
 }
 
@@ -254,15 +335,65 @@ async function handleLogout() {
       <div class="info-section">
         <h2 class="section-title">Matières</h2>
         <div class="subjects-container">
-          <span 
-            v-for="(subject, index) in subjects" 
-            :key="index"
-            class="subject-tag"
-            :style="{ backgroundColor: subject.color }"
-          >
-            {{ subject.name }}
-          </span>
-          <span v-if="subjects.length === 0" class="no-subjects">Aucune matière</span>
+          <template v-if="isEditing">
+            <!-- Mode édition : afficher les matières avec options -->
+            <div 
+              v-for="(subject, index) in editedSubjects" 
+              :key="index"
+              class="subject-edit-item"
+            >
+              <span class="subject-name-edit">{{ subject.name }}</span>
+              <div class="subject-actions">
+                <button 
+                  class="subject-help-btn" 
+                  :class="{ active: subject.canHelp }"
+                  @click="toggleCanHelp(index)"
+                  title="Peut aider"
+                >
+                  <q-icon name="check_circle" size="16px" />
+                </button>
+                <button 
+                  class="subject-help-btn" 
+                  :class="{ active: subject.needsHelp }"
+                  @click="toggleNeedsHelp(index)"
+                  title="A besoin d'aide"
+                >
+                  <q-icon name="help" size="16px" />
+                </button>
+                <button 
+                  class="subject-remove-btn" 
+                  @click="removeSubject(index)"
+                  title="Supprimer"
+                >
+                  <q-icon name="close" size="18px" />
+                </button>
+              </div>
+            </div>
+            <!-- Champ pour ajouter une nouvelle matière -->
+            <div class="add-subject-container">
+              <input 
+                v-model="newSubjectName"
+                class="new-subject-input"
+                placeholder="Nouvelle matière"
+                @keyup.enter="addSubject"
+              />
+              <button class="add-subject-btn" @click="addSubject" title="Ajouter">
+                <q-icon name="add" size="20px" />
+              </button>
+            </div>
+          </template>
+          <template v-else>
+            <!-- Mode lecture : afficher les tags colorés -->
+            <span 
+              v-for="(subject, index) in subjects" 
+              :key="index"
+              class="subject-tag"
+              :style="{ backgroundColor: subject.color }"
+            >
+              {{ subject.name }}
+            </span>
+            <span v-if="subjects.length === 0" class="no-subjects">Aucune matière</span>
+          </template>
         </div>
       </div>
 
@@ -270,14 +401,42 @@ async function handleLogout() {
       <div class="info-section">
         <h2 class="section-title">Disponibilités</h2>
         <div class="availabilities-container">
-          <span 
-            v-for="(availability, index) in availabilities" 
-            :key="index"
-            class="availability-item"
-          >
-            {{ availability }}
-          </span>
-          <span v-if="availabilities.length === 0" class="no-availabilities">Aucune disponibilité</span>
+          <template v-if="isEditing">
+            <!-- Mode édition : afficher les dates avec possibilité de supprimer -->
+            <div 
+              v-for="(availability, index) in editedAvailabilities" 
+              :key="index"
+              class="availability-edit-item"
+            >
+              <input 
+                type="date" 
+                v-model="editedAvailabilities[index]" 
+                class="availability-input"
+              />
+              <button 
+                class="availability-remove-btn" 
+                @click="removeAvailability(index)"
+                title="Supprimer"
+              >
+                <q-icon name="close" size="18px" />
+              </button>
+            </div>
+            <button class="add-availability-btn" @click="addAvailability">
+              <q-icon name="add" size="18px" />
+              Ajouter une date
+            </button>
+          </template>
+          <template v-else>
+            <!-- Mode lecture : afficher les dates formatées -->
+            <span 
+              v-for="(availability, index) in availabilities" 
+              :key="index"
+              class="availability-item"
+            >
+              {{ availability }}
+            </span>
+            <span v-if="availabilities.length === 0" class="no-availabilities">Aucune disponibilité</span>
+          </template>
         </div>
       </div>
     </div>
@@ -442,6 +601,122 @@ async function handleLogout() {
   white-space: nowrap;
 }
 
+.subject-edit-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  gap: 8px;
+}
+
+.subject-name-edit {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  flex: 1;
+}
+
+.subject-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.subject-help-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subject-help-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.subject-help-btn.active {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+.subject-remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 77, 77, 0.3);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.subject-remove-btn:hover {
+  background: rgba(255, 77, 77, 0.5);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.add-subject-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.new-subject-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--sc-font-family);
+}
+
+.new-subject-input::placeholder {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.new-subject-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.add-subject-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.add-subject-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
 .no-subjects {
   color: rgba(255, 255, 255, 0.7);
   font-size: 14px;
@@ -459,6 +734,77 @@ async function handleLogout() {
   font-size: 14px;
   color: white;
   font-weight: 500;
+}
+
+.availability-edit-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.availability-input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  font-family: var(--sc-font-family);
+}
+
+.availability-input:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.availability-input::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
+}
+
+.availability-remove-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 77, 77, 0.3);
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.availability-remove-btn:hover {
+  background: rgba(255, 77, 77, 0.5);
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.add-availability-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border: 2px dashed rgba(255, 255, 255, 0.5);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+
+.add-availability-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.7);
 }
 
 .no-availabilities {
