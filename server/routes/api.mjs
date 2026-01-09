@@ -76,6 +76,50 @@ router.post('/pm/send', authMiddleware, sendMessage);
 router.post('/pm/read/:partner', authMiddleware, markAsRead);
 
 /* =====================================================
+ * CURRENT USER PROFILE
+ * ===================================================== */
+router.get('/me', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    
+    // Récupérer l'utilisateur avec ses relations
+    const user = await User.findById(userId)
+      .populate('city_id institution_id field_id')
+      .lean();
+
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+
+    // Récupérer les profils de matières de l'utilisateur
+    const profiles = await UserSubjectProfile.find({ user_id: userId })
+      .populate('subject_id')
+      .lean();
+
+    const subjects = profiles.map(p => ({
+      subject: p.subject_id?.name ?? 'Unknown',
+      canHelp: p.can_help,
+      needsHelp: p.needs_help,
+      level: p.level
+    }));
+
+    // Récupérer les disponibilités de l'utilisateur
+    const availabilities = await UserAvailability.find({ user_id: userId })
+      .sort({ start_time: 1 })
+      .lean();
+
+    res.json({
+      ...user,
+      subjects,
+      availabilities
+    });
+  } catch (err) {
+    console.error('Error fetching user profile:', err);
+    res.status(500).json({ error: 'Impossible de récupérer le profil utilisateur' });
+  }
+});
+
+/* =====================================================
  * USERS
  * ===================================================== */
 router.get('/users', async (req, res) => {

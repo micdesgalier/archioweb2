@@ -9,7 +9,8 @@
   import TheHomePage from './components/TheHomePage.vue';
   import TheDiscussionsList from './components/TheDiscussionsList.vue';
   import TheChatDetail from './components/TheChatDetail.vue';
-  import { connectToChat } from '@/store/chat.js';
+  import TheProfilePage from './components/TheProfilePage.vue';
+  import { connectToChat, logout } from '@/store/chat.js';
 
   // Auth page state: 'login' or 'signup'
   const authPage = ref('login');
@@ -112,6 +113,10 @@
 
   function closeCalendar() {
     showCalendar.value = false;
+  }
+
+  async function handleLogout() {
+    await logout();
   }
 
   const $q = useQuasar();
@@ -243,11 +248,10 @@
           <span>Bientôt disponible</span>
         </div>
 
-        <div v-else-if="currentTab === 'profile'" class="placeholder-page">
-          <q-icon name="person" size="64px" color="grey-5" />
-          <p>Profil</p>
-          <span>Bientôt disponible</span>
-        </div>
+        <TheProfilePage 
+          v-else-if="currentTab === 'profile'"
+          @logout="handleLogout"
+        />
       </div>
 
       <!-- Bottom Navigation -->
