@@ -286,7 +286,7 @@ async function handleLogout() {
   margin: 20px;
   padding: 24px 20px;
   border-radius: 20px;
-  background: linear-gradient(135deg, #4A90D9 0%, #8B5CF6 100%);
+  background: #0066FF;
   color: white;
   position: relative;
 }
