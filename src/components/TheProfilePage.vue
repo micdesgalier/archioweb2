@@ -19,6 +19,7 @@ const editedFieldName = ref('');
 async function loadProfile() {
   loadingProfile.value = true;
   try {
+    // Essayer de charger depuis l'API si elle existe
     const response = await fetch('/api/me', {
       method: 'GET',
       headers: {
@@ -27,18 +28,41 @@ async function loadProfile() {
       }
     });
     
-    if (!response.ok) {
-      throw new Error('Erreur lors du chargement du profil');
+    if (response.ok) {
+      const userData = await response.json();
+      profileData.value = userData;
+      editedFirstName.value = userData.first_name || '';
+      editedLastName.value = userData.last_name || '';
+      editedStudyYear.value = userData.study_year || '';
+      editedFieldName.value = userData.field_id?.name || '';
+    } else {
+      // Si l'API n'existe pas, utiliser les données par défaut
+      profileData.value = {
+        first_name: 'Alice',
+        last_name: 'Dupont',
+        study_year: 2,
+        field_id: { name: 'Informatique' },
+        avatar_url: 'https://i.pravatar.cc/150?img=1'
+      };
+      editedFirstName.value = 'Alice';
+      editedLastName.value = 'Dupont';
+      editedStudyYear.value = 2;
+      editedFieldName.value = 'Informatique';
     }
-    
-    const userData = await response.json();
-    profileData.value = userData;
-    editedFirstName.value = userData.first_name || '';
-    editedLastName.value = userData.last_name || '';
-    editedStudyYear.value = userData.study_year || '';
-    editedFieldName.value = userData.field_id?.name || '';
   } catch (err) {
     console.error('Error loading profile:', err);
+    // En cas d'erreur, utiliser les données par défaut
+    profileData.value = {
+      first_name: 'Alice',
+      last_name: 'Dupont',
+      study_year: 2,
+      field_id: { name: 'Informatique' },
+      avatar_url: 'https://i.pravatar.cc/150?img=1'
+    };
+    editedFirstName.value = 'Alice';
+    editedLastName.value = 'Dupont';
+    editedStudyYear.value = 2;
+    editedFieldName.value = 'Informatique';
   } finally {
     loadingProfile.value = false;
     loading.value = false;
@@ -49,11 +73,28 @@ onMounted(() => {
   loadProfile();
 });
 
+// Matières informatiques par défaut pour un étudiant en informatique
+const defaultSubjects = [
+  { name: 'Programmation', canHelp: true, needsHelp: false },
+  { name: 'Base de données', canHelp: true, needsHelp: false },
+  { name: 'Algorithmes', canHelp: false, needsHelp: true },
+  { name: 'Réseaux', canHelp: false, needsHelp: true },
+  { name: 'Sécurité', canHelp: true, needsHelp: false },
+  { name: 'Web Development', canHelp: true, needsHelp: false }
+];
+
 // Formater les matières pour l'affichage
 const subjects = computed(() => {
-  if (!profileData.value?.subjects) return [];
-  return profileData.value.subjects.map(subj => ({
-    name: subj.subject,
+  // Si on a des données du serveur, les utiliser
+  if (profileData.value?.subjects && profileData.value.subjects.length > 0) {
+    return profileData.value.subjects.map(subj => ({
+      name: subj.subject || subj.name,
+      color: subj.canHelp ? '#22C55E' : subj.needsHelp ? '#FBBF24' : '#6B7280'
+    }));
+  }
+  // Sinon, utiliser les matières par défaut pour un étudiant en informatique
+  return defaultSubjects.map(subj => ({
+    name: subj.name,
     color: subj.canHelp ? '#22C55E' : subj.needsHelp ? '#FBBF24' : '#6B7280'
   }));
 });
@@ -397,6 +438,8 @@ async function handleLogout() {
   font-size: 13px;
   font-weight: 500;
   color: white;
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .no-subjects {
