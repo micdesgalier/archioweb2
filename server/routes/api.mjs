@@ -581,6 +581,38 @@ router.get('/messages', async (req, res) => {
   }
 });
 
+// GET /api/messages/paginated?page=1&limit=20
+router.get('/messages/paginated', async (req, res) => {
+  try {
+    // Récupérer page et limit depuis query params
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100); // max 100 par page
+    const skip = (page - 1) * limit;
+
+    // Récupérer les messages avec pagination
+    const messages = await Message.find()
+      .sort({ timestamp: -1 }) // les plus récents d'abord
+      .skip(skip)
+      .limit(limit)
+      .populate('sender_id receiver_id conversation_id')
+      .lean();
+
+    // Compter le total pour savoir combien de pages
+    const total = await Message.countDocuments();
+
+    res.json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      data: messages,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Impossible de récupérer les messages paginés' });
+  }
+});
+
 router.get('/messages/:id', async (req, res) => {
   try {
     const { id } = req.params;
