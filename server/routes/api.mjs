@@ -385,7 +385,7 @@ router.get('/study-groups/:id', async (req, res) => {
  * ===================================================== */
 router.post('/study-groups', authMiddleware, async (req, res) => {
   try {
-    const userId = req.user.sub;
+    const userId = req.user.sub;  
 
     const {
       title,
@@ -427,6 +427,41 @@ router.post('/study-groups', authMiddleware, async (req, res) => {
     res.status(400).json({
       error: err.message || 'Impossible de créer le study group',
     });
+  }
+});
+
+// Stats: nombre de study groups créés par utilisateur
+router.get('/stats/user-study-groups', async (req, res) => {
+  try {
+    // récupère le nom réel de la collection studygroups (fonctionne même si tu changes le nom)
+    const studyGroupColl = StudyGroup.collection.name;
+
+    const stats = await User.aggregate([
+      {
+        $lookup: {
+          from: studyGroupColl,      // jointure vers la collection des StudyGroup
+          localField: '_id',
+          foreignField: 'creator_id',
+          as: 'groups'
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          userId: '$_id',
+          email: '$email',
+          first_name: '$first_name',
+          last_name: '$last_name',
+          totalGroups: { $size: '$groups' } // nombre de groupes créés
+        }
+      },
+      { $sort: { totalGroups: -1, email: 1 } } // tri: plus actifs en premier
+    ]);
+
+    res.json(stats);
+  } catch (err) {
+    console.error('Error fetching user study-group stats:', err);
+    res.status(500).json({ error: 'Impossible de récupérer les statistiques' });
   }
 });
 
