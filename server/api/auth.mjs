@@ -46,15 +46,14 @@ export async function login(req, res) {
       }
     );
 
-    if (rememberMe) {
-      const maxAge = parseExpirationTime(JWT_EXPIRES_IN);
-      res.cookie('auth_token', token, {
+    const maxAge = parseExpirationTime(JWT_EXPIRES_IN);
+    
+    res.cookie('auth_token', token, {
         httpOnly: true,
-        secure: true,
-        sameSite: 'strict',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
         maxAge
       });
-    }
 
     res.json(token);
   } catch (err) {

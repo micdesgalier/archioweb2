@@ -380,6 +380,56 @@ router.get('/study-groups/:id', async (req, res) => {
   }
 });
 
+/* =====================================================
+ * STUDY GROUPS (CREATE)
+ * ===================================================== */
+router.post('/study-groups', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+
+    const {
+      title,
+      description,
+      subject_id,
+      city_id,
+      location_detail,
+      is_online,
+      start_time,
+      end_time,
+      max_members,
+    } = req.body;
+
+    // validations minimales
+    if (!title || typeof is_online !== 'boolean') {
+      return res.status(400).json({
+        error: 'Titre et is_online sont requis',
+      });
+    }
+
+    // Création du groupe
+    const group = await StudyGroup.create({
+      title,
+      description,
+      creator_id: userId, // 🔐 sécurisé
+      subject_id: subject_id || null,
+      city_id: is_online ? null : city_id || null,
+      location_detail,
+      is_online,
+      start_time,
+      end_time,
+      max_members,
+    });
+
+    res.status(201).json(group);
+  } catch (err) {
+    console.error('Create study group error:', err);
+
+    res.status(400).json({
+      error: err.message || 'Impossible de créer le study group',
+    });
+  }
+});
+
 // Group members
 router.get('/group-members', async (req, res) => {
   try {
