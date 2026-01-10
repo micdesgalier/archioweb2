@@ -1,37 +1,15 @@
 import mongoose from 'mongoose';
+const { Schema, model } = mongoose;
 
-const messageSchema = new mongoose.Schema({
-  from: {
-    type: String,
-    required: true,
-    index: true
-  },
-  to: {
-    type: String,
-    required: true,
-    index: true
-  },
-  content: {
-    type: String,
-    required: true,
-    maxlength: 500
-  },
-  timestamp: {
-    type: Date,
-    default: Date.now,
-    index: true
-  },
-  read: {
-    type: Boolean,
-    default: false
-  }
-}, {
-  timestamps: true
-});
+const messageSchema = new Schema({
+  sender_id: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  receiver_id: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+  content: { type: String, required: true, maxlength: 500 },
+  timestamp: { type: Date, default: Date.now },
+  read: { type: Boolean, default: false },
+  parent_id: { type: Schema.Types.ObjectId, ref: 'Message' }, // si fil de discussion
+  conversation_id: { type: Schema.Types.ObjectId, ref: 'Conversation' } // si tu as des conversations
+}, { timestamps: true });
 
-// Index for efficient conversation queries
-messageSchema.index({ from: 1, to: 1, timestamp: -1 });
-messageSchema.index({ to: 1, from: 1, timestamp: -1 });
-
-const Message = mongoose.model('Message', messageSchema);
+const Message = model('Message', messageSchema);
 export default Message;
