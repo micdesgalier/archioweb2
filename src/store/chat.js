@@ -17,7 +17,7 @@ export const groupMembers = ref([]); // Group memberships
 
 const wsHost = import.meta.env.VITE_WS_HOST || 'https://archioweb2.onrender.com/';
 const wsPort = import.meta.env.VITE_WS_PORT || '8989';
-const wsProtocol = import.meta.env.VITE_WS_PROTOCOL || 'ws';
+const wsProtocol = import.meta.env.VITE_WS_PROTOCOL || 'wss';
 export const ws = new WSClient(`${wsProtocol}://${wsHost}:${wsPort}`);
 
 const API_BASE = import.meta.env.VITE_API_BASE || 'https://archioweb2.onrender.com/';
