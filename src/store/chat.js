@@ -15,12 +15,12 @@ export const authToken = ref('');
 export const studyGroups = ref([]); // All study groups
 export const groupMembers = ref([]); // Group memberships
 
-const wsHost = import.meta.env.VITE_WS_HOST || 'localhost';
+const wsHost = import.meta.env.VITE_WS_HOST || 'https://archioweb2.onrender.com/';
 const wsPort = import.meta.env.VITE_WS_PORT || '8989';
 const wsProtocol = import.meta.env.VITE_WS_PROTOCOL || 'ws';
 export const ws = new WSClient(`${wsProtocol}://${wsHost}:${wsPort}`);
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8989';
+const API_BASE = import.meta.env.VITE_API_BASE || 'https://archioweb2.onrender.com/';
 
 // Decode JWT to get username
 function decodeToken(token) {
