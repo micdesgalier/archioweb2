@@ -18,28 +18,25 @@ import apiRouter from './routes/api.mjs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-async function main() {
+/**
+ * 👉 Cette fonction crée l'app Express
+ * 👉 Elle est utilisée par les tests (supertest)
+ */
+export async function createApp() {
   /* ==============================
    * 1) Connexion MongoDB
    * ============================== */
-  try {
-    await connectMongo(console);
-    console.log('✅ MongoDB connecté');
-  } catch (err) {
-    console.error('❌ Impossible de se connecter à MongoDB', err);
-    process.exit(1);
-  }
+  await connectMongo(console);
 
   /* ==============================
    * 2) App Express
    * ============================== */
   const app = express();
-  const httpServer = http.createServer(app);
 
   app.use(cors({
-    origin: 'http://localhost:5173', // autorise uniquement ton front
+    origin: 'http://localhost:5173',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    credentials: true // si tu envoies cookies ou token
+    credentials: true
   }));
 
   app.use(express.json());
@@ -51,13 +48,11 @@ async function main() {
     '/uploads',
     express.static(path.join(__dirname, 'uploads'))
   );
-  // → accessible via http://localhost:8989/uploads/mon-image.jpg
 
   /* ==============================
    * 4) API
    * ============================== */
   app.use('/api', apiRouter);
-  // ⚠️ upload est monté DANS api.mjs
 
   /* ==============================
    * 5) Health check
@@ -65,7 +60,7 @@ async function main() {
   app.get('/health', (req, res) => {
     res.json({
       status: 'ok',
-      mongoState: mongoose.connection.readyState, // 1 = connecté
+      mongoState: mongoose.connection.readyState
     });
   });
 
@@ -74,29 +69,48 @@ async function main() {
    * ============================== */
   app.use(express.static(path.join(__dirname, '../dist')));
 
-  /* ==============================
-   * 7) WebSocket
-   * ============================== */
-  wsServer.addRpc('/em', emoteCommand);
-  wsServer.addRpc('/pm', privateMessageCommand);
-  setupUsersChannel();
-  setupChatChannel();
-
-  /* ==============================
-   * 8) Start server
-   * ============================== */
-  const port = process.env.BACKEND_PORT
-    ? parseInt(process.env.BACKEND_PORT, 10)
-    : 8989;
-
-  httpServer.listen(port, () => {
-    console.log(`🚀 HTTP server listening on http://localhost:${port}`);
-  });
-
-  wsServer.start({ server: httpServer });
+  return app;
 }
 
-main().catch(err => {
-  console.error('❌ Erreur fatale serveur:', err);
-  process.exit(1);
-});
+/**
+ * 👉 Démarrage du serveur
+ * 👉 NE SE LANCE PAS en test
+ */
+async function startServer() {
+  try {
+    const app = await createApp();
+    const httpServer = http.createServer(app);
+
+    /* ==============================
+     * WebSocket
+     * ============================== */
+    wsServer.addRpc('/em', emoteCommand);
+    wsServer.addRpc('/pm', privateMessageCommand);
+    setupUsersChannel();
+    setupChatChannel();
+
+    const port = process.env.BACKEND_PORT
+      ? parseInt(process.env.BACKEND_PORT, 10)
+      : 8989;
+
+    httpServer.listen(port, () => {
+      console.log(`🚀 HTTP server listening on http://localhost:${port}`);
+    });
+
+    wsServer.start({ server: httpServer });
+
+  } catch (err) {
+    console.error('❌ Erreur fatale serveur:', err);
+    process.exit(1);
+  }
+}
+
+/**
+ * 🚨 IMPORTANT
+ * Le serveur ne démarre PAS quand NODE_ENV === 'test'
+ */
+if (process.env.NODE_ENV !== 'test') {
+  startServer();
+}
+
+export default createApp;

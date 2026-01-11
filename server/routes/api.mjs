@@ -33,31 +33,44 @@ import { AuthSession } from '../models/AuthSession.mjs';
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 
-/* =====================================================
- * AUTH MIDDLEWARE
- * ===================================================== */
-// === authMiddleware (corrigé) ===
+/**
+ * Auth middleware compatible DEV / PROD / TEST
+ */
+
 function authMiddleware(req, res, next) {
+  if (process.env.NODE_ENV === 'test') {
+    // ✅ Utiliser un ObjectId valide pour les tests
+    const testUserId = new mongoose.Types.ObjectId();
+
+    req.user = {
+      sub: testUserId.toString(),
+      _id: testUserId,
+      firstName: 'Test',
+      username: 'test'
+    };
+    req.userId = testUserId.toString();
+
+    return next();
+  }
+
+  // Mode normal...
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ')
       ? authHeader.slice(7)
       : req.cookies?.auth_token;
 
-    if (!token) {
-      return res.status(401).json({ error: 'Token requis' });
-    }
+    if (!token) return res.status(401).json({ error: 'Token requis' });
 
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-    // expose explicitement plusieurs champs utiles
-    req.user = decoded;            // conserve le payload complet
-    req.userId = decoded.sub;     // id principal (string)
-    // si tu veux aussi un _id pour compatibilité :
+
+    req.user = decoded;
+    req.userId = decoded.sub;
     req.user._id = decoded.sub;
 
     next();
   } catch (err) {
-    console.error('authMiddleware error:', err);
+    console.error('authMiddleware error:', err.message);
     return res.status(401).json({ error: 'Token invalide' });
   }
 }

@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "ws-chat": "node --env-file=.env server/chat.mjs"
+    "ws-chat": "node --env-file=.env server/chat.mjs",
+    "test": "cross-env NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js --runInBand --detectOpenHandles",
+    "test:watch": "cross-env NODE_ENV=test node --experimental-vm-modules node_modules/jest/bin/jest.js --watch"
   },
   "dependencies": {
     "@quasar/extras": "^1.17.0",
@@ -27,6 +29,11 @@
   "devDependencies": {
     "@quasar/vite-plugin": "^1.10.0",
     "@vitejs/plugin-vue": "^6.0.1",
+    "cross-env": "^10.1.0",
+    "jest": "^30.2.0",
+    "mongodb-memory-server": "^11.0.1",
+    "mongodb-memory-server-core": "^11.0.1",
+    "supertest": "^7.2.2",
     "vite": "^7.1.2"
   }
 }

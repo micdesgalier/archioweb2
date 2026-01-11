@@ -310,7 +310,6 @@ async function uploadAndSendFile(file) {
   }
 }
 
-
 function handleFileSelect(event) {
   const file = event.target.files[0];
   if (file) {
