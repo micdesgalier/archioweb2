@@ -9,8 +9,3 @@
 
 # Logs
 npm-debug.log*
-
-# Env files
-.env
-.env.*
-!.env.example
