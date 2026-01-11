@@ -476,6 +476,45 @@ router.get('/group-members', async (req, res) => {
   }
 });
 
+// Join a group
+router.post('/group-members', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.sub;
+    const { group_id } = req.body;
+
+    if (!group_id) {
+      return res.status(400).json({ error: 'group_id est requis' });
+    }
+
+    // Check if already a member
+    const existing = await GroupMember.findOne({
+      group_id,
+      user_id: userId,
+      status: { $ne: 'left' }
+    });
+
+    if (existing) {
+      return res.status(400).json({ error: 'Vous êtes déjà membre de ce groupe' });
+    }
+
+    // Create membership
+    const member = await GroupMember.create({
+      group_id,
+      user_id: userId,
+      role: 'member',
+      status: 'joined'
+    });
+
+    await member.populate('user_id group_id');
+    res.status(201).json(member);
+  } catch (err) {
+    console.error('Error joining group:', err);
+    res.status(400).json({
+      error: err.message || 'Impossible de rejoindre le groupe'
+    });
+  }
+});
+
 router.get('/group-members/:id', async (req, res) => {
   try {
     const { id } = req.params;
@@ -496,6 +535,35 @@ router.get('/group-members/:id', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Impossible de récupérer le membre de groupe" });
+  }
+});
+
+// Get group messages (last message and unread count)
+router.get('/group-messages/:groupId', async (req, res) => {
+  try {
+    const { groupId } = req.params;
+
+    // For now, return empty since group messaging uses a different system
+    // This will be implemented when group messaging is fully set up
+    // For now, we'll check if there's a conversation for this group
+    const conversation = await Conversation.findOne({ type: 'group', group_id: groupId });
+    
+    if (!conversation) {
+      return res.json({
+        lastMessage: null,
+        unreadCount: 0
+      });
+    }
+
+    // TODO: When group messaging is implemented, fetch actual last message
+    // For now, return placeholder
+    res.json({
+      lastMessage: null,
+      unreadCount: 0
+    });
+  } catch (err) {
+    console.error('Error fetching group messages:', err);
+    res.status(500).json({ error: 'Erreur lors de la récupération des messages' });
   }
 });
 
