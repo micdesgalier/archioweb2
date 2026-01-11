@@ -12,6 +12,8 @@ export const showUsersList = ref(false);
 export const currentUsername = ref('');
 export const currentUserId = ref('');
 export const authToken = ref('');
+export const studyGroups = ref([]); // All study groups
+export const groupMembers = ref([]); // Group memberships
 
 const wsHost = import.meta.env.VITE_WS_HOST || 'localhost';
 const wsPort = import.meta.env.VITE_WS_PORT || '8989';
@@ -104,6 +106,32 @@ export async function loadConversations() {
     }
   } catch (err) {
     console.error('Error loading conversations:', err);
+  }
+}
+
+// Load all study groups
+export async function loadStudyGroups() {
+  try {
+    const response = await fetch('/api/study-groups');
+    if (response.ok) {
+      const data = await response.json();
+      studyGroups.value = data;
+    }
+  } catch (err) {
+    console.error('Error loading study groups:', err);
+  }
+}
+
+// Load group members
+export async function loadGroupMembers() {
+  try {
+    const response = await fetch('/api/group-members');
+    if (response.ok) {
+      const data = await response.json();
+      groupMembers.value = data;
+    }
+  } catch (err) {
+    console.error('Error loading group members:', err);
   }
 }
 
@@ -240,6 +268,10 @@ export async function connectToChat(token) {
   
   // Load existing conversations from database
   await loadConversations();
+
+  // Load study groups and members
+  await loadStudyGroups();
+  await loadGroupMembers();
 }
 
 export async function logout() {

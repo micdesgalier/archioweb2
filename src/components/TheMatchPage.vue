@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
-import { allUsers, loadAllUsers, currentUserId, currentUsername, sendPrivateMessage } from '@/store/chat.js';
+import { allUsers, loadAllUsers, currentUserId, currentUsername, sendPrivateMessage, studyGroups } from '@/store/chat.js';
 
 const $q = useQuasar();
 const emit = defineEmits(['open-chat', 'open-chat-with-message']);
@@ -28,7 +28,8 @@ const showFilters = ref(false);
 const filters = ref({
   city: '',
   canHelpSubjects: [],  // Multiple subjects allowed
-  needsHelpSubjects: [] // Multiple subjects allowed
+  needsHelpSubjects: [], // Multiple subjects allowed
+  type: 'person' // 'person' or 'group'
 });
 
 // Get unique cities from users
@@ -57,23 +58,56 @@ const availableSubjects = computed(() => {
 const hasActiveFilters = computed(() => {
   return filters.value.city || 
          filters.value.canHelpSubjects.length > 0 || 
-         filters.value.needsHelpSubjects.length > 0;
+         filters.value.needsHelpSubjects.length > 0 ||
+         filters.value.type !== 'person';
 });
 
-// Filter users (excluding current user)
-const filteredUsers = computed(() => {
-  return allUsers.value
-    .filter(user => user._id !== currentUserId.value)
-    .filter(user => {
+// Combined items (users or groups based on filter)
+const allItems = computed(() => {
+  if (filters.value.type === 'group') {
+    return studyGroups.value.map(group => ({
+      ...group,
+      type: 'group',
+      displayName: group.title,
+      avatar: null, // Groups don't have avatars yet
+      subjects: group.subject_id ? [{ subject: group.subject_id.name, canHelp: true, needsHelp: false }] : [],
+      city_id: group.city_id || { name: group.is_online ? 'En ligne' : 'Non spécifié' }
+    }));
+  } else {
+    return allUsers.value.map(user => ({
+      ...user,
+      type: 'person',
+      displayName: `${user.first_name} ${user.last_name}`
+    }));
+  }
+});
+
+// Filter items (users or groups)
+const filteredItems = computed(() => {
+  return allItems.value
+    .filter(item => item._id !== currentUserId.value || item.type === 'group') // Exclude current user from persons, but include all groups
+    .filter(item => {
       // City filter
-      if (filters.value.city && user.city_id?.name !== filters.value.city) {
+      if (filters.value.city && item.city_id?.name !== filters.value.city) {
         return false;
       }
       
+      // For groups, we only filter by city and subject
+      if (item.type === 'group') {
+        if (filters.value.canHelpSubjects.length > 0) {
+          const hasAnySubject = filters.value.canHelpSubjects.some(filterSubject =>
+            item.subjects?.some(s => s.subject === filterSubject)
+          );
+          if (!hasAnySubject) return false;
+        }
+        return true;
+      }
+      
+      // Person filters
       // Can help subjects filter - find users who can help in ANY of these subjects
       if (filters.value.canHelpSubjects.length > 0) {
         const hasAnySubject = filters.value.canHelpSubjects.some(filterSubject =>
-          user.subjects?.some(s => s.subject === filterSubject && s.canHelp)
+          item.subjects?.some(s => s.subject === filterSubject && s.canHelp)
         );
         if (!hasAnySubject) return false;
       }
@@ -81,7 +115,7 @@ const filteredUsers = computed(() => {
       // Needs help subjects filter - find users who need help in ANY of these subjects
       if (filters.value.needsHelpSubjects.length > 0) {
         const hasAnySubject = filters.value.needsHelpSubjects.some(filterSubject =>
-          user.subjects?.some(s => s.subject === filterSubject && s.needsHelp)
+          item.subjects?.some(s => s.subject === filterSubject && s.needsHelp)
         );
         if (!hasAnySubject) return false;
       }
@@ -90,49 +124,58 @@ const filteredUsers = computed(() => {
     });
 });
 
-// Current displayed user
-const currentUser = computed(() => {
-  if (currentIndex.value >= filteredUsers.value.length) {
+// Current displayed item
+const currentItem = computed(() => {
+  if (currentIndex.value >= filteredItems.value.length) {
     return null;
   }
-  return filteredUsers.value[currentIndex.value];
+  return filteredItems.value[currentIndex.value];
 });
 
 // Get subjects the user can help with
 const canHelpSubjects = computed(() => {
-  if (!currentUser.value?.subjects) return [];
-  return currentUser.value.subjects.filter(s => s.canHelp);
+  if (!currentItem.value?.subjects) return [];
+  return currentItem.value.subjects.filter(s => s.canHelp);
 });
 
 // Get subjects the user needs help with
 const needsHelpSubjects = computed(() => {
-  if (!currentUser.value?.subjects) return [];
-  return currentUser.value.subjects.filter(s => s.needsHelp);
+  if (!currentItem.value?.subjects) return [];
+  return currentItem.value.subjects.filter(s => s.needsHelp);
 });
 
 // Actions
 function skipUser() {
-  if (filteredUsers.value.length <= 1) {
-    return; // No other users to show
+  if (filteredItems.value.length <= 1) {
+    return; // No other items to show
   }
   
-  // Move to next user, cycle back to start if at end
-  currentIndex.value = (currentIndex.value + 1) % filteredUsers.value.length;
+  // Move to next item, cycle back to start if at end
+  currentIndex.value = (currentIndex.value + 1) % filteredItems.value.length;
 }
 
 function openChat() {
-  if (currentUser.value) {
-    emit('open-chat', {
-      id: currentUser.value._id,
-      name: `${currentUser.value.first_name} ${currentUser.value.last_name}`,
-      partnerName: currentUser.value.first_name,
-      avatar: currentUser.value.avatar_url || `https://i.pravatar.cc/100?u=${currentUser.value._id}`
-    });
+  if (currentItem.value) {
+    if (currentItem.value.type === 'group') {
+      emit('open-chat', {
+        id: currentItem.value._id,
+        name: currentItem.value.title,
+        type: 'group',
+        avatar: null
+      });
+    } else {
+      emit('open-chat', {
+        id: currentItem.value._id,
+        name: `${currentItem.value.first_name} ${currentItem.value.last_name}`,
+        partnerName: currentItem.value.first_name,
+        avatar: currentItem.value.avatar_url || `https://i.pravatar.cc/100?u=${currentItem.value._id}`
+      });
+    }
   }
 }
 
 function proposeSession() {
-  if (!currentUser.value) return;
+  if (!currentItem.value || currentItem.value.type === 'group') return;
   showProposalModal.value = true;
 }
 
@@ -143,7 +186,7 @@ function formatDate(dateStr) {
 }
 
 async function sendSessionProposal() {
-  if (!currentUser.value || !sessionSubject.value || !sessionDate.value || !sessionTimeStart.value || !sessionTimeEnd.value) {
+  if (!currentItem.value || !sessionSubject.value || !sessionDate.value || !sessionTimeStart.value || !sessionTimeEnd.value) {
     $q.notify({
       type: 'warning',
       message: 'Veuillez remplir tous les champs',
@@ -155,7 +198,7 @@ async function sendSessionProposal() {
   // Create a special session proposal message
   const sessionMessage = {
     type: 'session_proposal',
-    title: currentUser.value.first_name,
+    title: currentItem.value.type === 'group' ? currentItem.value.title : currentItem.value.first_name,
     subject: sessionSubject.value,
     date: sessionDate.value,
     dateFormatted: formatDate(sessionDate.value),
@@ -167,7 +210,13 @@ async function sendSessionProposal() {
   const messageContent = `[SESSION_PROPOSAL]${JSON.stringify(sessionMessage)}`;
   
   try {
-    await sendPrivateMessage(currentUser.value.first_name, messageContent);
+    if (currentItem.value.type === 'group') {
+      // TODO: Implement group messaging
+      console.log('Group session proposal:', sessionMessage);
+    } else {
+      await sendPrivateMessage(currentItem.value.first_name, messageContent);
+    }
+    
     showProposalModal.value = false;
     
     // Reset form
@@ -182,13 +231,22 @@ async function sendSessionProposal() {
       timeout: 2000
     });
     
-    // Open chat with this user
-    emit('open-chat', {
-      id: currentUser.value._id,
-      name: `${currentUser.value.first_name} ${currentUser.value.last_name}`,
-      partnerName: currentUser.value.first_name,
-      avatar: currentUser.value.avatar_url || `https://i.pravatar.cc/100?u=${currentUser.value._id}`
-    });
+    // Open chat with this item
+    if (currentItem.value.type === 'group') {
+      emit('open-chat', {
+        id: currentItem.value._id,
+        name: currentItem.value.title,
+        type: 'group',
+        avatar: null
+      });
+    } else {
+      emit('open-chat', {
+        id: currentItem.value._id,
+        name: `${currentItem.value.first_name} ${currentItem.value.last_name}`,
+        partnerName: currentItem.value.first_name,
+        avatar: currentItem.value.avatar_url || `https://i.pravatar.cc/100?u=${currentItem.value._id}`
+      });
+    }
   } catch (err) {
     console.error('Error sending session proposal:', err);
     $q.notify({
@@ -279,6 +337,22 @@ onMounted(() => {
     <!-- Filters Panel -->
     <div v-if="showFilters" class="filters-panel">
       <div class="filter-group">
+        <label>Type</label>
+        <q-select
+          v-model="filters.type"
+          :options="[
+            { label: 'Personnes', value: 'person' },
+            { label: 'Groupes', value: 'group' }
+          ]"
+          dense
+          outlined
+          class="filter-select"
+          emit-value
+          map-options
+        />
+      </div>
+      
+      <div class="filter-group">
         <label>Ville</label>
         <q-select
           v-model="filters.city"
@@ -332,37 +406,51 @@ onMounted(() => {
     </div>
 
     <!-- User Card -->
-    <div v-if="currentUser" class="card-container">
+    <div v-if="currentItem" class="card-container">
       <div class="user-card">
         <!-- Avatar -->
         <div class="avatar-container">
           <img 
-            :src="currentUser.avatar_url || `https://i.pravatar.cc/200?u=${currentUser._id}`" 
-            :alt="currentUser.first_name"
+            v-if="currentItem.type === 'person'"
+            :src="currentItem.avatar_url || `https://i.pravatar.cc/200?u=${currentItem._id}`" 
+            :alt="currentItem.first_name"
             class="user-avatar"
           />
+          <div v-else class="group-avatar">
+            <q-icon name="groups" size="48px" color="primary" />
+          </div>
         </div>
         
         <!-- Name -->
-        <h2 class="user-name">{{ currentUser.first_name }} {{ currentUser.last_name }}</h2>
+        <h2 class="user-name">{{ currentItem.displayName }}</h2>
         
         <!-- Info Card -->
         <div class="info-card">
-          <!-- Institution -->
-          <div class="info-section">
+          <!-- Institution (only for persons) -->
+          <div v-if="currentItem.type === 'person'" class="info-section">
             <span class="info-label">Établissement et études</span>
             <div class="info-tags">
-              <span class="tag white">{{ currentUser.institution_id?.name || 'Non renseigné' }}</span>
-              <span v-if="currentUser.field_id?.name" class="tag white">{{ currentUser.field_id.name }}</span>
-              <span v-if="currentUser.study_year" class="tag white">{{ currentUser.study_year }}ème</span>
+              <span class="tag white">{{ currentItem.institution_id?.name || 'Non renseigné' }}</span>
+              <span v-if="currentItem.field_id?.name" class="tag white">{{ currentItem.field_id.name }}</span>
+              <span v-if="currentItem.study_year" class="tag white">{{ currentItem.study_year }}ème</span>
+            </div>
+          </div>
+          
+          <!-- Group info (only for groups) -->
+          <div v-if="currentItem.type === 'group'" class="info-section">
+            <span class="info-label">Groupe d'étude</span>
+            <div class="info-tags">
+              <span class="tag white">{{ currentItem.subject_id?.name || 'Général' }}</span>
+              <span class="tag white">{{ currentItem.memberCount || 0 }} membres</span>
+              <span v-if="currentItem.is_online" class="tag white">En ligne</span>
             </div>
           </div>
           
           <!-- City -->
           <div class="info-section">
-            <span class="info-label">Réside à</span>
+            <span class="info-label">Localisation</span>
             <div class="info-tags">
-              <span class="tag white">{{ currentUser.city_id?.name || 'Non renseigné' }}</span>
+              <span class="tag white">{{ currentItem.city_id?.name || (currentItem.is_online ? 'En ligne' : 'Non spécifié') }}</span>
             </div>
           </div>
           
@@ -404,13 +492,13 @@ onMounted(() => {
         <button class="action-btn chat" @click="openChat">
           <q-icon name="chat_bubble_outline" size="24px" />
         </button>
-        <button class="action-btn session" @click="proposeSession">
+        <button v-if="currentItem.type === 'person'" class="action-btn session" @click="proposeSession">
           Proposer une session
         </button>
       </div>
     </div>
 
-    <!-- No more users -->
+    <!-- No more items -->
     <div v-else class="no-users">
       <q-icon name="people" size="64px" color="grey-5" />
       <p>Plus de profils à afficher</p>
