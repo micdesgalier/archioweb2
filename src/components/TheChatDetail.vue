@@ -305,6 +305,8 @@ async function uploadAndSendFile(file) {
       message: err.message || 'Erreur lors de l\'envoi',
       timeout: 2000
     });
+  } finally {
+    await loadConversation(partnerName.value);
   }
 }
 
