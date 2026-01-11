@@ -116,6 +116,19 @@
     showCalendar.value = false;
   }
 
+  function addSessionToCalendar(session) {
+    const newEvent = {
+      id: Date.now(),
+      title: session.partner || session.title,
+      subject: session.subject,
+      date: session.date,
+      time: session.timeRange,
+      color: '#22C55E' // Green for accepted sessions
+    };
+    calendarEvents.value.push(newEvent);
+    console.log('✅ Session added to calendar:', newEvent);
+  }
+
   async function handleLogout() {
     await logout();
   }
@@ -172,6 +185,7 @@
       v-if="currentChat" 
       :discussion="currentChat"
       @back="closeChat"
+      @session-accepted="addSessionToCalendar"
     />
 
     <!-- Main content with bottom nav -->

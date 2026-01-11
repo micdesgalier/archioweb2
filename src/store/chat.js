@@ -179,11 +179,30 @@ export function getConversationMessages(username) {
 }
 
 export async function connectToChat(token) {
-  // Store token for API calls
-  authToken.value = token;
+  // If token is provided, store it; otherwise try to get from cookie
+  if (token) {
+    authToken.value = token;
+    // Also store in localStorage for persistence
+    try {
+      localStorage.setItem('authToken', token);
+    } catch (e) {}
+  } else {
+    // Try to get token from localStorage
+    try {
+      const storedToken = localStorage.getItem('authToken');
+      if (storedToken) {
+        authToken.value = storedToken;
+      }
+    } catch (e) {}
+  }
+  
+  // If still no token, return early
+  if (!authToken.value) {
+    return;
+  }
   
   // Decode token to get current user info
-  const decoded = decodeToken(token);
+  const decoded = decodeToken(authToken.value);
   if (decoded?.firstName) {
     currentUsername.value = decoded.firstName;
   }
@@ -192,7 +211,7 @@ export async function connectToChat(token) {
   }
   
   // Connect to WebSocket
-  await ws.connect(token);
+  await ws.connect(authToken.value);
   await ws.sub('users', usersList => users.value = usersList);
   
   // Subscribe to public chat (for group chats)
@@ -230,5 +249,9 @@ export async function logout() {
   currentUsername.value = '';
   currentUserId.value = '';
   authToken.value = '';
+  // Clear stored token
+  try {
+    localStorage.removeItem('authToken');
+  } catch (e) {}
   ws.close();
 }

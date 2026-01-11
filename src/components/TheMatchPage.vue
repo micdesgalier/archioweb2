@@ -1,8 +1,24 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
-import { allUsers, loadAllUsers, currentUserId } from '@/store/chat.js';
+import { useQuasar } from 'quasar';
+import { allUsers, loadAllUsers, currentUserId, currentUsername, sendPrivateMessage } from '@/store/chat.js';
 
-const emit = defineEmits(['open-chat', 'propose-session']);
+const $q = useQuasar();
+const emit = defineEmits(['open-chat', 'open-chat-with-message']);
+
+// Session proposal form
+const showProposalModal = ref(false);
+const sessionSubject = ref('');
+const sessionDate = ref('');
+const sessionTimeStart = ref('');
+const sessionTimeEnd = ref('');
+
+const subjects = [
+  'Mathématiques', 'Physique', 'Chimie', 'Biologie', 'Programmation',
+  'Algèbre linéaire', 'Analyse', 'Français', 'Anglais', 'Allemand',
+  'Histoire', 'Géographie', 'Économie', 'Droit', 'Marketing',
+  'Gestion de projet', 'UX/UI Design', 'Autre'
+];
 
 // Current card index for swipe-style navigation
 const currentIndex = ref(0);
@@ -116,8 +132,70 @@ function openChat() {
 }
 
 function proposeSession() {
-  if (currentUser.value) {
-    emit('propose-session', currentUser.value);
+  if (!currentUser.value) return;
+  showProposalModal.value = true;
+}
+
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  const [year, month, day] = dateStr.split('/');
+  return `${day}.${month}.${year}`;
+}
+
+async function sendSessionProposal() {
+  if (!currentUser.value || !sessionSubject.value || !sessionDate.value || !sessionTimeStart.value || !sessionTimeEnd.value) {
+    $q.notify({
+      type: 'warning',
+      message: 'Veuillez remplir tous les champs',
+      timeout: 2000
+    });
+    return;
+  }
+  
+  // Create a special session proposal message
+  const sessionMessage = {
+    type: 'session_proposal',
+    title: currentUser.value.first_name,
+    subject: sessionSubject.value,
+    date: sessionDate.value,
+    dateFormatted: formatDate(sessionDate.value),
+    timeRange: `${sessionTimeStart.value} - ${sessionTimeEnd.value}`,
+    status: 'pending'
+  };
+  
+  // Send as a special formatted message
+  const messageContent = `[SESSION_PROPOSAL]${JSON.stringify(sessionMessage)}`;
+  
+  try {
+    await sendPrivateMessage(currentUser.value.first_name, messageContent);
+    showProposalModal.value = false;
+    
+    // Reset form
+    sessionSubject.value = '';
+    sessionDate.value = '';
+    sessionTimeStart.value = '';
+    sessionTimeEnd.value = '';
+    
+    $q.notify({
+      type: 'positive',
+      message: 'Proposition envoyée !',
+      timeout: 2000
+    });
+    
+    // Open chat with this user
+    emit('open-chat', {
+      id: currentUser.value._id,
+      name: `${currentUser.value.first_name} ${currentUser.value.last_name}`,
+      partnerName: currentUser.value.first_name,
+      avatar: currentUser.value.avatar_url || `https://i.pravatar.cc/100?u=${currentUser.value._id}`
+    });
+  } catch (err) {
+    console.error('Error sending session proposal:', err);
+    $q.notify({
+      type: 'negative',
+      message: 'Erreur lors de l\'envoi',
+      timeout: 2000
+    });
   }
 }
 
@@ -341,6 +419,111 @@ onMounted(() => {
         Réinitialiser les filtres
       </button>
     </div>
+
+    <!-- Session Proposal Dialog -->
+    <q-dialog v-model="showProposalModal">
+      <q-card style="min-width: 350px; border-radius: 16px;">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6">Proposer une session</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section>
+          <div class="q-mb-md q-pa-sm" style="background: #F0F7FF; border-radius: 8px; color: #4A90D9;">
+            <q-icon name="person" size="20px" class="q-mr-sm" />
+            À : <strong>{{ currentUser?.first_name }}</strong>
+          </div>
+
+          <q-select
+            v-model="sessionSubject"
+            :options="subjects"
+            label="Matière *"
+            outlined
+            dense
+            class="q-mb-md"
+          />
+
+          <q-input
+            v-model="sessionDate"
+            label="Date *"
+            outlined
+            dense
+            class="q-mb-md"
+            mask="####/##/##"
+            placeholder="2026/03/18"
+          >
+            <template v-slot:append>
+              <q-icon name="event" class="cursor-pointer">
+                <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                  <q-date v-model="sessionDate" mask="YYYY/MM/DD" first-day-of-week="1">
+                    <div class="row items-center justify-end">
+                      <q-btn v-close-popup label="OK" color="primary" flat />
+                    </div>
+                  </q-date>
+                </q-popup-proxy>
+              </q-icon>
+            </template>
+          </q-input>
+
+          <div class="row q-gutter-sm">
+            <q-input
+              v-model="sessionTimeStart"
+              label="Début *"
+              outlined
+              dense
+              class="col"
+              mask="##:##"
+              placeholder="14:00"
+            >
+              <template v-slot:append>
+                <q-icon name="access_time" class="cursor-pointer">
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-time v-model="sessionTimeStart" mask="HH:mm" format24h>
+                      <div class="row items-center justify-end">
+                        <q-btn v-close-popup label="OK" color="primary" flat />
+                      </div>
+                    </q-time>
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
+
+            <q-input
+              v-model="sessionTimeEnd"
+              label="Fin *"
+              outlined
+              dense
+              class="col"
+              mask="##:##"
+              placeholder="16:30"
+            >
+              <template v-slot:append>
+                <q-icon name="access_time" class="cursor-pointer">
+                  <q-popup-proxy cover transition-show="scale" transition-hide="scale">
+                    <q-time v-model="sessionTimeEnd" mask="HH:mm" format24h>
+                      <div class="row items-center justify-end">
+                        <q-btn v-close-popup label="OK" color="primary" flat />
+                      </div>
+                    </q-time>
+                  </q-popup-proxy>
+                </q-icon>
+              </template>
+            </q-input>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pt-none">
+          <q-btn flat label="Annuler" v-close-popup />
+          <q-btn 
+            unelevated 
+            label="Envoyer" 
+            color="primary" 
+            @click="sendSessionProposal"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 

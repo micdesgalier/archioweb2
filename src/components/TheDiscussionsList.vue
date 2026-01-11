@@ -41,10 +41,11 @@ const discussions = computed(() => {
       
       return {
         id: user._id,
-        name: userName,
+        name: `${user.first_name} ${user.last_name}`,
+        partnerName: userName, // First name used for messages
         fullName: `${user.first_name} ${user.last_name}`,
         email: user.email,
-        avatar: user.profile_picture_url || `https://i.pravatar.cc/100?u=${user._id}`,
+        avatar: user.avatar_url || `https://i.pravatar.cc/100?u=${user._id}`,
         lastMessage: msgInfo?.text || 'Démarrer une conversation',
         time: msgInfo?.time || '',
         unread: 0,
