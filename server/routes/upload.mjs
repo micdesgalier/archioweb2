@@ -31,9 +31,16 @@ const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB max
   fileFilter: (req, file, cb) => {
-    // n'autorise que les images
-    if (!file.mimetype || !file.mimetype.startsWith('image/')) {
-      return cb(new Error('Seules les images sont autorisées'));
+    // Autorise images, PDFs, documents
+    const allowedMimes = [
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+      'application/pdf',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain'
+    ];
+    if (!file.mimetype || !allowedMimes.includes(file.mimetype)) {
+      return cb(new Error('Type de fichier non autorisé'));
     }
     cb(null, true);
   }

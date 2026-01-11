@@ -25,6 +25,10 @@ export default defineConfig(({ mode }) => {
           target: `http://${backendHost}:${backendPort}`,
           changeOrigin: true,
         },
+        '/uploads': {
+          target: `http://${backendHost}:${backendPort}`,
+          changeOrigin: true,
+        },
       },
       allowedHosts: [
       'routine-trace-numeric-transaction.trycloudflare.com'

@@ -31,6 +31,15 @@ const sessionDate = ref('');
 const sessionTimeStart = ref('');
 const sessionTimeEnd = ref('');
 
+// Image preview
+const showImagePreview = ref(false);
+const previewImageUrl = ref('');
+
+function openImagePreview(url) {
+  previewImageUrl.value = url;
+  showImagePreview.value = true;
+}
+
 const subjects = [
   'Mathématiques', 'Physique', 'Chimie', 'Biologie', 'Programmation',
   'Algèbre linéaire', 'Analyse', 'Français', 'Anglais', 'Allemand',
@@ -62,15 +71,46 @@ function parseSessionProposal(content) {
   return null;
 }
 
+// Parse image from message content
+function parseImage(content) {
+  if (content?.startsWith('[IMAGE]')) {
+    return content.replace('[IMAGE]', '');
+  }
+  return null;
+}
+
+// Parse file from message content
+function parseFile(content) {
+  if (content?.startsWith('[FILE]')) {
+    try {
+      return JSON.parse(content.replace('[FILE]', ''));
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 // Get messages for this specific conversation
 const messages = computed(() => {
   const convMessages = privateMessages.value[partnerName.value] || [];
+  console.log('Loading messages for:', partnerName.value, 'Count:', convMessages.length);
   return convMessages.map(msg => {
     const sessionProposal = parseSessionProposal(msg.content);
+    const imageUrl = parseImage(msg.content);
+    const fileInfo = parseFile(msg.content);
+    
+    // Debug: log if we find an image
+    if (msg.content?.includes('[IMAGE]')) {
+      console.log('Found image message:', msg.content, '-> imageUrl:', imageUrl);
+    }
+    
     return {
       id: msg._id || msg.timestamp,
-      text: sessionProposal ? null : msg.content,
+      text: (sessionProposal || imageUrl || fileInfo) ? null : msg.content,
       sessionProposal,
+      imageUrl,
+      fileInfo,
       time: new Date(msg.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       sent: msg.from === currentUsername.value,
       read: msg.read || false,
@@ -171,16 +211,81 @@ function openCamera() {
   cameraInput.value?.click();
 }
 
+function formatFileSize(bytes) {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+async function uploadAndSendFile(file) {
+  if (!file) return;
+  
+  const isImage = file.type.startsWith('image/');
+  
+  // Show loading notification
+  const loadingNotif = $q.notify({
+    type: 'ongoing',
+    message: 'Envoi en cours...',
+    spinner: true,
+    timeout: 0
+  });
+  
+  try {
+    // Upload the file
+    const formData = new FormData();
+    formData.append('photo', file);
+    
+    const response = await fetch('/api/upload-photo', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (!response.ok) {
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.error || 'Erreur upload');
+    }
+    
+    const data = await response.json();
+    
+    let messageContent;
+    if (isImage) {
+      // Send message with image URL
+      messageContent = `[IMAGE]${data.file.file_url}`;
+    } else {
+      // Send message with file info
+      messageContent = `[FILE]${JSON.stringify({
+        url: data.file.file_url,
+        name: data.file.originalname,
+        size: data.file.file_size,
+        type: data.file.mime_type
+      })}`;
+    }
+    
+    await sendPrivateMessage(partnerName.value, messageContent);
+    
+    loadingNotif();
+    $q.notify({
+      type: 'positive',
+      message: isImage ? 'Image envoyée !' : 'Fichier envoyé !',
+      timeout: 2000
+    });
+  } catch (err) {
+    loadingNotif();
+    console.error('Upload error:', err);
+    $q.notify({
+      type: 'negative',
+      message: err.message || 'Erreur lors de l\'envoi',
+      timeout: 2000
+    });
+  }
+}
+
 function handleFileSelect(event) {
   const file = event.target.files[0];
   if (file) {
-    // TODO: Upload file and send as message
-    $q.notify({
-      type: 'info',
-      message: `Fichier sélectionné: ${file.name}`,
-      caption: 'Upload en cours de développement',
-      timeout: 2000
-    });
+    uploadAndSendFile(file);
   }
   event.target.value = '';
 }
@@ -188,13 +293,7 @@ function handleFileSelect(event) {
 function handleImageSelect(event) {
   const file = event.target.files[0];
   if (file) {
-    // TODO: Upload image and send as message
-    $q.notify({
-      type: 'info',
-      message: `Image sélectionnée: ${file.name}`,
-      caption: 'Upload en cours de développement',
-      timeout: 2000
-    });
+    uploadAndSendFile(file);
   }
   event.target.value = '';
 }
@@ -202,13 +301,7 @@ function handleImageSelect(event) {
 function handleCameraCapture(event) {
   const file = event.target.files[0];
   if (file) {
-    // TODO: Upload photo and send as message
-    $q.notify({
-      type: 'info',
-      message: 'Photo capturée',
-      caption: 'Upload en cours de développement',
-      timeout: 2000
-    });
+    uploadAndSendFile(file);
   }
   event.target.value = '';
 }
@@ -352,6 +445,46 @@ onMounted(async () => {
             </div>
           </div>
 
+          <!-- Image Message -->
+          <div v-else-if="message.imageUrl" class="message-bubble image-message">
+            <img 
+              :src="message.imageUrl" 
+              alt="Image" 
+              class="chat-image" 
+              @click="openImagePreview(message.imageUrl)"
+            />
+            <div class="message-meta">
+              <span class="message-time">{{ message.time }}</span>
+              <q-icon 
+                v-if="message.sent" 
+                :name="message.read ? 'done_all' : 'done'" 
+                class="read-indicator"
+                :class="{ read: message.read }"
+              />
+            </div>
+          </div>
+
+          <!-- File Message -->
+          <div v-else-if="message.fileInfo" class="message-bubble file-message">
+            <a :href="message.fileInfo.url" target="_blank" class="file-link">
+              <q-icon name="description" size="28px" />
+              <div class="file-details">
+                <span class="file-name">{{ message.fileInfo.name }}</span>
+                <span class="file-size">{{ formatFileSize(message.fileInfo.size) }}</span>
+              </div>
+              <q-icon name="download" size="20px" class="download-icon" />
+            </a>
+            <div class="message-meta">
+              <span class="message-time">{{ message.time }}</span>
+              <q-icon 
+                v-if="message.sent" 
+                :name="message.read ? 'done_all' : 'done'" 
+                class="read-indicator"
+                :class="{ read: message.read }"
+              />
+            </div>
+          </div>
+
           <!-- Regular Message Bubble -->
           <div v-else class="message-bubble">
             <p class="message-text">{{ message.text }}</p>
@@ -381,18 +514,11 @@ onMounted(async () => {
         <q-icon name="add" />
         <q-menu anchor="top left" self="bottom left">
           <q-list style="min-width: 220px">
-            <q-item clickable v-close-popup @click="openFilePicker">
-              <q-item-section avatar>
-                <q-icon name="attach_file" color="primary" />
-              </q-item-section>
-              <q-item-section>Fichier</q-item-section>
-            </q-item>
-            
             <q-item clickable v-close-popup @click="openImagePicker">
               <q-item-section avatar>
                 <q-icon name="image" color="green" />
               </q-item-section>
-              <q-item-section>Photo</q-item-section>
+              <q-item-section>Galerie photo</q-item-section>
             </q-item>
             
             <q-item clickable v-close-popup @click="openCamera">
@@ -400,6 +526,13 @@ onMounted(async () => {
                 <q-icon name="camera_alt" color="amber" />
               </q-item-section>
               <q-item-section>Prendre une photo</q-item-section>
+            </q-item>
+            
+            <q-item clickable v-close-popup @click="openFilePicker">
+              <q-item-section avatar>
+                <q-icon name="attach_file" color="primary" />
+              </q-item-section>
+              <q-item-section>Fichier / Document</q-item-section>
             </q-item>
             
             <q-separator />
@@ -418,6 +551,7 @@ onMounted(async () => {
       <input 
         type="file" 
         ref="fileInput" 
+        accept="image/*,.pdf,.doc,.docx,.txt"
         style="display: none" 
         @change="handleFileSelect"
       />
@@ -560,6 +694,21 @@ onMounted(async () => {
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Image Preview Dialog -->
+    <q-dialog v-model="showImagePreview" maximized>
+      <div class="image-preview-overlay" @click="showImagePreview = false">
+        <q-btn 
+          round 
+          flat 
+          icon="close" 
+          color="white" 
+          class="close-preview-btn"
+          @click="showImagePreview = false"
+        />
+        <img :src="previewImageUrl" alt="Preview" class="preview-image" @click.stop />
+      </div>
+    </q-dialog>
   </div>
 </template>
 
@@ -690,6 +839,99 @@ onMounted(async () => {
   background: white;
   border-bottom-left-radius: 4px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Image messages */
+.image-message {
+  padding: 6px !important;
+  background: transparent !important;
+}
+
+.chat-image {
+  max-width: 250px;
+  max-height: 300px;
+  border-radius: 12px;
+  cursor: pointer;
+  object-fit: cover;
+  display: block;
+}
+
+.message.sent .image-message {
+  background: transparent !important;
+}
+
+.message.received .image-message {
+  background: transparent !important;
+}
+
+/* Image preview */
+.image-preview-overlay {
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.close-preview-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+}
+
+.preview-image {
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+  border-radius: 8px;
+}
+
+/* File messages */
+.file-message {
+  padding: 8px 12px !important;
+}
+
+.file-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  color: inherit;
+  padding: 8px;
+  border-radius: 8px;
+  background: rgba(74, 144, 217, 0.1);
+}
+
+.message.sent .file-link {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.file-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.file-name {
+  font-weight: 500;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.file-size {
+  font-size: 12px;
+  color: var(--sc-text-secondary);
+}
+
+.download-icon {
+  color: var(--sc-primary-blue);
 }
 
 .message-text {
