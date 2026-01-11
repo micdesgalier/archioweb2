@@ -83,6 +83,7 @@ function openChat(discussion) {
 
 onMounted(async () => {
   await loadAllUsers();
+  console.log("LOOOOOOOOOOOOOAD");
   await loadConversations();
 });
 </script>

@@ -218,38 +218,53 @@ function removeAvailability(index) {
   editedAvailabilities.value.splice(index, 1);
 }
 
-// Sauvegarder les modifications
 async function saveProfile() {
-  if (profileData.value) {
-    // Sauvegarder les informations de base
-    profileData.value.first_name = editedFirstName.value;
-    profileData.value.last_name = editedLastName.value;
-    profileData.value.study_year = parseInt(editedStudyYear.value);
-    if (profileData.value.field_id) {
-      profileData.value.field_id.name = editedFieldName.value;
-    }
-    
-    // Sauvegarder les matières (seulement celles avec canHelp ou needsHelp)
-    const subjectsToSave = editedSubjects.value.filter(subj => subj.canHelp || subj.needsHelp);
-    profileData.value.subjects = subjectsToSave.map(subj => ({
-      subject: subj.name,
-      name: subj.name,
-      canHelp: subj.canHelp,
-      needsHelp: subj.needsHelp,
-      color: subj.canHelp ? '#22C55E' : subj.needsHelp ? '#FBBF24' : '#6B7280'
-    }));
-    
-    // Sauvegarder les disponibilités
-    const validDates = editedAvailabilities.value.filter(date => date && date.trim());
-    profileData.value.availabilities = validDates.map(date => {
-      const dateObj = new Date(date);
-      return {
-        start_time: dateObj,
-        end_time: new Date(date + 'T23:59:59')
-      };
+  if (!profileData.value) return;
+
+  try {
+    loadingProfile.value = true;
+
+    const payload = {
+      first_name: editedFirstName.value,
+      last_name: editedLastName.value,
+      study_year: Number(editedStudyYear.value) || null,
+      // ⚠️ ici on envoie l'id du field, PAS le nom
+      // à adapter si tu veux gérer la création/lookup du field
+      // field_id: profileData.value.field_id?.id
+    };
+
+    const response = await fetch(`/api/users/${currentUserId.value}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken.value}`
+      },
+      body: JSON.stringify(payload)
     });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Erreur lors de la mise à jour');
+    }
+
+    const updatedUser = await response.json();
+
+    // 🔁 Mettre à jour le state local avec la réponse API
+    profileData.value = updatedUser;
+
+    // 🔄 Réinitialiser les champs éditables
+    editedFirstName.value = updatedUser.first_name || '';
+    editedLastName.value = updatedUser.last_name || '';
+    editedStudyYear.value = updatedUser.study_year || '';
+    editedFieldName.value = updatedUser.field_id?.name || '';
+
+    isEditing.value = false;
+  } catch (err) {
+    console.error('Erreur sauvegarde profil:', err);
+    alert('Impossible de sauvegarder le profil');
+  } finally {
+    loadingProfile.value = false;
   }
-  isEditing.value = false;
 }
 
 // Annuler l'édition

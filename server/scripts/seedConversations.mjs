@@ -50,12 +50,23 @@ export async function seedConversations() {
         otherUser = users[getRandomInt(0, users.length - 1)];
       } while (otherUser._id.equals(user._id));
 
-      // Comme le modèle n'a pas user1/user2, on crée simplement une conversation "private"
-      await Conversation.create({
+      // Crée la conversation privée avec les deux participants
+      const exists = await Conversation.findOne({
         type: 'private',
+        members: { $all: [user._id, otherUser._id] }
       });
 
-      console.log(`Seeded private conversation for user: ${user.email}`);
+      if (exists) {
+        console.log(`Private conversation already exists between ${user.email} and ${otherUser.email}`);
+        continue;
+      }
+
+      await Conversation.create({
+        type: 'private',
+        members: [user._id, otherUser._id],
+      });
+
+      console.log(`Seeded private conversation between ${user.email} and ${otherUser.email}`);
     }
   }
 }

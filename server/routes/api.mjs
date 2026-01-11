@@ -1,4 +1,5 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import jwt from 'jsonwebtoken';
 
 import { login, register } from '../api/auth.mjs';
@@ -35,6 +36,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 /* =====================================================
  * AUTH MIDDLEWARE
  * ===================================================== */
+// === authMiddleware (corrigé) ===
 function authMiddleware(req, res, next) {
   try {
     const authHeader = req.headers.authorization;
@@ -47,9 +49,15 @@ function authMiddleware(req, res, next) {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
-    req.user = decoded;
+    // expose explicitement plusieurs champs utiles
+    req.user = decoded;            // conserve le payload complet
+    req.userId = decoded.sub;     // id principal (string)
+    // si tu veux aussi un _id pour compatibilité :
+    req.user._id = decoded.sub;
+
     next();
-  } catch {
+  } catch (err) {
+    console.error('authMiddleware error:', err);
     return res.status(401).json({ error: 'Token invalide' });
   }
 }
@@ -176,6 +184,64 @@ router.get('/users/:id', async (req, res) => {
   }
 
   res.json(user);
+});
+
+// UPDATE user
+router.put('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Vérification ObjectId Mongo
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({ error: 'ID utilisateur invalide' });
+    }
+
+    // Champs autorisés à la modification
+    const allowedFields = [
+      'first_name',
+      'last_name',
+      'birth_date',
+      'city_id',
+      'institution_id',
+      'field_id',
+      'study_year',
+      'bio',
+      'avatar_url',
+    ];
+
+    // Construire l’objet de mise à jour
+    const updates = {};
+    for (const field of allowedFields) {
+      if (req.body[field] !== undefined) {
+        updates[field] = req.body[field];
+      }
+    }
+
+    // Refuser une requête vide
+    if (Object.keys(updates).length === 0) {
+      return res.status(400).json({ error: 'Aucune donnée à mettre à jour' });
+    }
+
+    // Mise à jour
+    const updatedUser = await User.findByIdAndUpdate(
+      id,
+      { $set: updates },
+      {
+        new: true,        // renvoie l’utilisateur mis à jour
+        runValidators: true,
+      }
+    )
+      .populate('city_id institution_id field_id');
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+
+    res.json(updatedUser);
+  } catch (err) {
+    console.error('Update user error:', err);
+    res.status(500).json({ error: 'Impossible de mettre à jour l’utilisateur' });
+  }
 });
 
 // Cities
@@ -633,6 +699,121 @@ router.get('/messages/:id', async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Impossible de récupérer le message" });
+  }
+});
+
+// GET /api/privatem/conversation/:username
+router.get('/privatem/conversation/:username', authMiddleware, async (req, res) => {
+  try {
+    const currentUserId = req.userId || req.user?._id || req.user?.sub;
+    if (!currentUserId) {
+      return res.status(400).json({ error: 'User id manquant dans le token' });
+    }
+
+    const { username } = req.params;
+    if (!username) {
+      return res.status(400).json({ error: 'Nom d’utilisateur requis' });
+    }
+
+    // 🔍 Récupérer l'utilisateur cible par son prénom ou email (ou autre selon besoin)
+    const otherUser = await User.findOne({
+      $or: [
+        { first_name: username },
+        { email: username }
+      ]
+    });
+
+    if (!otherUser) {
+      return res.status(404).json({ error: `Utilisateur '${username}' non trouvé` });
+    }
+
+    // 🔍 Trouver la conversation privée entre les deux utilisateurs
+    const conversation = await Conversation.findOne({
+      type: 'private',
+      members: { $all: [currentUserId, otherUser._id] }
+    }).lean();
+
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation privée non trouvée' });
+    }
+
+    // 🔹 Récupérer tous les messages de cette conversation, triés par timestamp
+    const messages = await Message.find({ conversation_id: conversation._id })
+      .sort({ timestamp: 1 }) // plus ancien -> plus récent
+      .populate('sender_id', 'first_name last_name avatar_url email')
+      .populate('receiver_id', 'first_name last_name avatar_url email')
+      .lean();
+
+    res.json({
+      conversation: {
+        id: conversation._id,
+        members: conversation.members,
+      },
+      messages,
+    });
+
+  } catch (err) {
+    console.error('Error fetching messages for private conversation:', err);
+    res.status(500).json({ error: 'Impossible de récupérer les messages privés' });
+  }
+});
+
+// GET /api/privatem/conversations
+router.get('/privatem/conversations', authMiddleware, async (req, res) => {
+  try {
+    // récupère l'id de l'utilisateur depuis le middleware
+    const userId = req.userId || req.user?.sub || req.user?._id;
+    if (!userId) {
+      console.warn('No userId in request (token payload):', req.user);
+      return res.status(400).json({ error: 'User id manquant dans le token' });
+    }
+
+    console.log('🔍 Recherche conversations pour userId:', userId);
+
+    // Récupère les conversations privées où l'utilisateur est membre
+    // populate members (info basique) et group_id si présent
+    const conversations = await Conversation.find({
+      type: 'private',
+      members: { $in: [userId] }
+    })
+      .populate('members', 'first_name last_name email avatar_url') // info utile côté client
+      .populate('group_id')
+      .lean();
+
+    console.log('✅ Conversations trouvées:', conversations.length);
+
+    // Pour chaque conversation, récupérer les derniers messages (limit configurable)
+    const MSG_LIMIT = 50;
+
+    const conversationsWithMessages = await Promise.all(
+      conversations.map(async (convo) => {
+        // récupérer les derniers MSG_LIMIT messages triés du plus récent au plus ancien,
+        // puis on inverse pour retourner ordre chronologique ascendant (ancien -> récent)
+        const msgs = await Message.find({ conversation_id: convo._id })
+          .sort({ timestamp: -1 })
+          .limit(MSG_LIMIT)
+          .populate('sender_id', 'first_name last_name avatar_url email')
+          .populate('receiver_id', 'first_name last_name avatar_url email')
+          .lean();
+
+        // remettre dans l'ordre chronologique (plus ancien -> plus récent)
+        msgs.reverse();
+
+        // optionnel : inclure un count total de messages pour la conversation
+        const totalMessages = await Message.countDocuments({ conversation_id: convo._id });
+
+        return {
+          ...convo,
+          messages: msgs,
+          messagesCount: totalMessages,
+        };
+      })
+    );
+
+    res.json(conversationsWithMessages);
+  } catch (err) {
+    console.error('Error fetching private conversations with messages:', err);
+    res.status(500).json({ error: 'Impossible de récupérer les conversations privées' });
   }
 });
 

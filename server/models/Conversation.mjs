@@ -15,7 +15,9 @@ const conversationSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: 'StudyGroup',
   },
-}, {
+  members: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+}, 
+{
   timestamps: { createdAt: 'created_at', updatedAt: false },
   toJSON: {
     transform: (doc, ret) => {

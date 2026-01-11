@@ -1,6 +1,7 @@
 <script setup>
 import { ref, nextTick, onMounted, watch, computed } from 'vue';
-import { privateMessages, currentUsername, sendPrivateMessage, users, loadConversation, markMessagesAsRead } from '@/store/chat.js';
+import { privateMessages, currentUsername, currentUserId, sendPrivateMessage, users, loadConversation, markMessagesAsRead } from '@/store/chat.js';
+
 import { useQuasar } from 'quasar';
 
 const props = defineProps({
@@ -91,31 +92,47 @@ function parseFile(content) {
   return null;
 }
 
-// Get messages for this specific conversation
 const messages = computed(() => {
   const convMessages = privateMessages.value[partnerName.value] || [];
-  console.log('Loading messages for:', partnerName.value, 'Count:', convMessages.length);
+
+  // debug rapide
+  // console.log('privateMessages for', partnerName.value, convMessages);
+
   return convMessages.map(msg => {
     const sessionProposal = parseSessionProposal(msg.content);
     const imageUrl = parseImage(msg.content);
     const fileInfo = parseFile(msg.content);
-    
-    // Debug: log if we find an image
-    if (msg.content?.includes('[IMAGE]')) {
-      console.log('Found image message:', msg.content, '-> imageUrl:', imageUrl);
-    }
-    
+
+    // --- Normaliser sender id venant du serveur ---
+    // Possibilités rencontrées : msg.sender_id (ObjectId ou objet peuplé), msg.from, msg.sender
+    const rawSender = msg.sender_id ?? msg.from ?? msg.sender ?? msg.senderId ?? null;
+
+    // Si msg.sender_id est un objet peuplé { _id: '...' }, récupérer _id
+    const senderId = rawSender?._id ?? rawSender;
+
+    // currentUserId est un ref; utiliser .value et comparer en string
+    const currentId = currentUserId?.value ?? null;
+
+    const sent = senderId != null && currentId != null && String(senderId) === String(currentId);
+
+    // debug console (décommente si besoin)
+    // console.log('MSG debug:', { id: msg._id ?? msg.timestamp, senderId, currentId, sent });
+
     return {
       id: msg._id || msg.timestamp,
-      text: (sessionProposal || imageUrl || fileInfo) ? null : msg.content,
+      // selon ton modèle le texte est stocké dans `content`
+      text: (sessionProposal || imageUrl || fileInfo) ? null : (msg.content ?? msg.text ?? ''),
       sessionProposal,
       imageUrl,
       fileInfo,
-      time: new Date(msg.timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      sent: msg.from === currentUsername.value,
+      time: new Date(msg.timestamp || msg.created_at || Date.now()).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      sent,
       read: msg.read || false,
-      username: msg.from,
-      type: msg.type
+      // fallback pour username
+      username: msg.sender_name || msg.sender || msg.from || (senderId ? undefined : partnerName.value),
+      // expose raw fields si besoin pour debug côté template
+      _rawSender: senderId,
+      _rawMessage: msg
     };
   });
 });

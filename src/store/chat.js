@@ -80,7 +80,7 @@ export async function loadConversations() {
   if (!authToken.value) return;
   
   try {
-    const response = await fetch('/api/pm/conversations', {
+    const response = await fetch('/api/privatem/conversations', {
       headers: {
         'Authorization': `Bearer ${authToken.value}`
       }
@@ -89,6 +89,8 @@ export async function loadConversations() {
     if (response.ok) {
       const data = await response.json();
       conversations.value = data;
+
+      console.log(data);
       
       // Pre-populate privateMessages with last messages
       data.forEach(conv => {
@@ -110,15 +112,17 @@ export async function loadConversation(partner) {
   if (!authToken.value) return;
   
   try {
-    const response = await fetch(`/api/pm/conversation/${encodeURIComponent(partner)}`, {
+    const response = await fetch(`/api/privatem/conversation/${encodeURIComponent(partner)}`, {
       headers: {
         'Authorization': `Bearer ${authToken.value}`
       }
     });
-    
+
     if (response.ok) {
-      const messages = await response.json();
-      privateMessages.value[partner] = messages.map(msg => ({
+      const data = await response.json(); // <- objet avec {conversation, messages}
+      
+      // Accéder au tableau messages
+      privateMessages.value[partner] = data.messages.map(msg => ({
         ...msg,
         timestamp: new Date(msg.timestamp).getTime()
       }));
