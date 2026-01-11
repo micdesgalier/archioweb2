@@ -53,7 +53,17 @@ export async function seedStudyGroups() {
       continue;
     }
 
-    const now = Date.now();
+    // Set dates to February 2026
+    // First group: Feb 7, 14:47-14:47
+    // Second group: Feb 7, 15:47-15:47
+    // Third group: Feb 7, 16:47-16:47
+    const baseDate = new Date('2026-02-07');
+    const startHour = 14 + i; // 14, 15, 16
+    const startMinute = 47;
+    const startTime = new Date(baseDate);
+    startTime.setHours(startHour, startMinute, 0, 0);
+    const endTime = new Date(startTime);
+    endTime.setHours(startHour, startMinute + 2, 0, 0); // 2 minutes later
 
     await StudyGroup.create({
       ...g,
@@ -62,8 +72,8 @@ export async function seedStudyGroups() {
       city_id: g.is_online
         ? null
         : cities[i % cities.length]?._id ?? null,
-      start_time: new Date(now + i * 3600 * 1000),
-      end_time: new Date(now + (i * 3600 + 2) * 1000),
+      start_time: startTime,
+      end_time: endTime,
     });
 
     console.log('Seeded study group:', g.title);

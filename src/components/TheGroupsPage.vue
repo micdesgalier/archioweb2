@@ -6,7 +6,7 @@ import CreateGroupModal from './CreateGroupModal.vue';
 import GroupDetailModal from './GroupDetailModal.vue';
 
 const $q = useQuasar();
-const emit = defineEmits(['open-chat']);
+const emit = defineEmits(['open-chat', 'session-added']);
 const searchQuery = ref('');
 const showCreateModal = ref(false);
 const selectedGroup = ref(null);
@@ -192,7 +192,9 @@ async function loadGroupsWithMessages() {
       lastMessage: msgInfo?.text || null,
       time: msgInfo?.time || '',
       unread: msgInfo?.unread || 0,
-      hasMessages: !!msgInfo
+      hasMessages: !!msgInfo,
+      // Ensure rawGroup is preserved
+      rawGroup: group.rawGroup || group
     };
   }));
   
@@ -240,11 +242,11 @@ function openChat(group) {
   });
 }
 
-function handleGroupCreated() {
+async function handleGroupCreated() {
   showCreateModal.value = false;
-  loadStudyGroups();
-  loadGroupMembers();
-  loadGroupsWithMessages();
+  await loadStudyGroups();
+  await loadGroupMembers();
+  await loadGroupsWithMessages();
 }
 
 function handleJoinGroup() {
@@ -370,6 +372,7 @@ onMounted(async () => {
       @close="showGroupDetail = false"
       @join="handleJoinGroup"
       @open-chat="openChat"
+      @session-added="(session) => { console.log('📅 TheGroupsPage received session-added:', session); emit('session-added', session); }"
     />
   </div>
 </template>

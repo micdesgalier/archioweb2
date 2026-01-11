@@ -118,16 +118,28 @@
   }
 
   function addSessionToCalendar(session) {
+    console.log('📅 AppChat.addSessionToCalendar called with:', session);
+    if (!session || !session.date) {
+      console.error('❌ Invalid session data:', session);
+      return;
+    }
     const newEvent = {
       id: Date.now(),
-      title: session.partner || session.title,
-      subject: session.subject,
+      title: session.partner || session.title || 'Session',
+      subject: session.subject || 'Session',
       date: session.date,
-      time: session.timeRange,
+      time: session.timeRange || session.time || '14:00 - 16:00',
       color: '#22C55E' // Green for accepted sessions
     };
     calendarEvents.value.push(newEvent);
     console.log('✅ Session added to calendar:', newEvent);
+    console.log('📊 Total calendar events:', calendarEvents.value.length);
+    $q.notify({
+      type: 'positive',
+      message: 'Session ajoutée au calendrier',
+      position: 'top',
+      timeout: 2000
+    });
   }
 
   async function handleLogout() {
@@ -260,6 +272,7 @@
         <TheGroupsPage 
           v-else-if="currentTab === 'groups'"
           @open-chat="openChat"
+          @session-added="addSessionToCalendar"
         />
 
         <TheProfilePage 

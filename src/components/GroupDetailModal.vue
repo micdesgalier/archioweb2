@@ -14,7 +14,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['close', 'join', 'open-chat']);
+const emit = defineEmits(['close', 'join', 'open-chat', 'session-added']);
 
 const $q = useQuasar();
 
@@ -22,6 +22,7 @@ const isMember = computed(() => props.group.isMember);
 
 async function joinGroup() {
   try {
+    console.log('🚀 Joining group:', props.group.id, props.group.name);
     const response = await fetch('/api/group-members', {
       method: 'POST',
       headers: {
@@ -34,15 +35,58 @@ async function joinGroup() {
     });
 
     if (response.ok) {
+      const memberData = await response.json();
+      console.log('✅ Successfully joined group:', memberData);
+      
       $q.notify({
         type: 'positive',
         message: 'Vous avez rejoint le groupe',
         position: 'top'
       });
+      
+      // If group has a session, add it to calendar
+      console.log('🔍 Checking session data:', {
+        hasSession: props.group.hasSession,
+        rawGroup: props.group.rawGroup,
+        start_time: props.group.rawGroup?.start_time,
+        sessionTopic: props.group.sessionTopic,
+        sessionTime: props.group.sessionTime,
+        fullGroup: props.group
+      });
+      
+      // Try multiple ways to get the session data
+      const startTime = props.group.rawGroup?.start_time || props.group.start_time;
+      const hasSession = props.group.hasSession || (startTime && (props.group.rawGroup?.end_time || props.group.end_time));
+      
+      if (hasSession && startTime) {
+        const formattedDate = formatDateForCalendar(startTime);
+        console.log('📅 Formatted date:', formattedDate, 'from:', startTime);
+        if (formattedDate) {
+          const session = {
+            title: props.group.name,
+            subject: props.group.sessionTopic || props.group.subject || 'Session',
+            date: formattedDate,
+            timeRange: props.group.sessionTime || '14:00 - 16:00'
+          };
+          console.log('📅 Emitting session-added event:', session);
+          emit('session-added', session);
+        } else {
+          console.warn('⚠️ Could not format date for calendar:', startTime);
+        }
+      } else {
+        console.warn('⚠️ Group does not have session data:', {
+          hasSession: props.group.hasSession,
+          hasRawGroup: !!props.group.rawGroup,
+          hasStartTime: !!startTime,
+          startTime: startTime
+        });
+      }
+      
       emit('join');
       emit('close');
     } else {
       const error = await response.json();
+      console.error('❌ Error joining group:', error);
       throw new Error(error.error || 'Erreur lors de l\'adhésion');
     }
   } catch (err) {
@@ -52,6 +96,24 @@ async function joinGroup() {
       message: err.message || 'Erreur lors de l\'adhésion au groupe',
       position: 'top'
     });
+  }
+}
+
+function formatDateForCalendar(dateStr) {
+  if (!dateStr) return '';
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
+      console.error('Invalid date:', dateStr);
+      return '';
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}/${month}/${day}`;
+  } catch (err) {
+    console.error('Error formatting date:', err, dateStr);
+    return '';
   }
 }
 
