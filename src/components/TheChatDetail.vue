@@ -224,6 +224,7 @@ async function sendMessage() {
       position: 'top',
     });
   } finally {
+    await loadConversation(partnerName.value);
     sending.value = false;
   }
 }

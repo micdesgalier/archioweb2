@@ -1,6 +1,7 @@
 // server/index.mjs
 import 'dotenv/config';
 import express from 'express';
+import cors from 'cors';
 import http from 'http';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -34,6 +35,12 @@ async function main() {
    * ============================== */
   const app = express();
   const httpServer = http.createServer(app);
+
+  app.use(cors({
+    origin: 'http://localhost:5173', // autorise uniquement ton front
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    credentials: true // si tu envoies cookies ou token
+  }));
 
   app.use(express.json());
 

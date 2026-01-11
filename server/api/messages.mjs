@@ -1,4 +1,6 @@
 import Message from '../models/Message.mjs';
+import Conversation from '../models/Conversation.mjs';
+import User from '../models/User.mjs';
 import { wsServer } from '../store/wsStore.mjs';
 
 /**
@@ -86,14 +88,13 @@ export async function getConversations(req, res) {
   }
 }
 
-/**
- * Send a private message
- */
 export async function sendMessage(req, res) {
+  console.log("TESSSSSSST");
   const { to, content } = req.body;
-  const currentUser = req.user?.firstName;
+  const currentUserId = req.user?._id; // ObjectId de l'utilisateur connecté
+  const currentUserName = req.user?.firstName || req.user?.username;
 
-  if (!currentUser) {
+  if (!currentUserId) {
     return res.status(401).json({ error: 'Non authentifié' });
   }
 
@@ -106,36 +107,66 @@ export async function sendMessage(req, res) {
   }
 
   try {
+    // Trouver le destinataire par username
+    const recipient = await User.findOne({ first_name: to });
+    if (!recipient) {
+      console.log(to);
+      return res.status(404).json({ error: 'Destinataire introuvable' });
+    }
+
+    // Toujours trier les IDs pour éviter doublons A-B / B-A
+    const participants = [currentUserId, recipient._id].sort();
+
+    // Chercher conversation existante
+    let conversation = await Conversation.findOne({
+      type: 'private',
+      members: { $all: [currentUserId, recipient._id] }
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        type: 'private',
+        members: [currentUserId, recipient._id] // ✅ BON CHAMP
+      });
+    }
+
     const message = new Message({
-      from: currentUser,
-      to,
+      sender_id: currentUserId,
+      receiver_id: recipient._id,
+      conversation_id: conversation._id,
+      sender_name: currentUserName,
+      receiver_name: recipient.first_name || recipient.username,
       content,
-      timestamp: new Date()
+      timestamp: new Date(),
+      read: false,
+      type: 'pm'
     });
 
     await message.save();
 
     const messageData = {
       _id: message._id,
-      type: 'pm',
+      type: message.type,
       content: message.content,
-      from: message.from,
-      to: message.to,
+      sender_id: message.sender_id,
+      receiver_id: message.receiver_id,
+      sender_name: message.sender_name,
+      receiver_name: message.receiver_name,
       timestamp: message.timestamp.getTime(),
-      read: false
+      read: message.read
     };
 
-    // Try to send via WebSocket if recipient is online
+    // Envoi WebSocket
     try {
       if (wsServer) {
         const allClients = wsServer.getChannelClients('chat');
-        const toClients = allClients.filter(c => wsServer.clients.get(c)?.username === to);
-        const fromClients = allClients.filter(c => wsServer.clients.get(c)?.username === currentUser);
 
+        const toClients = allClients.filter(c => wsServer.clients.get(c)?.username === to);
         for (const toSocket of toClients) {
           wsServer.sendCmd(toSocket, 'pm', messageData);
         }
 
+        const fromClients = allClients.filter(c => wsServer.clients.get(c)?.username === currentUserName);
         for (const fromSocket of fromClients) {
           wsServer.sendCmd(fromSocket, 'pm', messageData);
         }
@@ -145,6 +176,7 @@ export async function sendMessage(req, res) {
     }
 
     res.json(messageData);
+
   } catch (err) {
     console.error('Error sending message:', err);
     res.status(500).json({ error: 'Erreur lors de l\'envoi du message' });

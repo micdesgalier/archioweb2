@@ -20,6 +20,8 @@ const wsPort = import.meta.env.VITE_WS_PORT || '8989';
 const wsProtocol = import.meta.env.VITE_WS_PROTOCOL || 'ws';
 export const ws = new WSClient(`${wsProtocol}://${wsHost}:${wsPort}`);
 
+const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8989';
+
 // Decode JWT to get username
 function decodeToken(token) {
   try {
@@ -166,7 +168,7 @@ export async function sendPrivateMessage(to, content) {
     throw new Error('Non authentifié');
   }
   
-  const response = await fetch('/api/pm/send', {
+  const response = await fetch(`${API_BASE}/api/pm/send`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
