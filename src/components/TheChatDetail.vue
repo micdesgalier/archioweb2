@@ -551,7 +551,7 @@ onMounted(async () => {
       <input 
         type="file" 
         ref="fileInput" 
-        accept="image/*,.pdf,.doc,.docx,.txt"
+        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip"
         style="display: none" 
         @change="handleFileSelect"
       />

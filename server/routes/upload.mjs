@@ -33,14 +33,30 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     // Autorise images, PDFs, documents
     const allowedMimes = [
-      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-      'application/pdf',
+      // Images
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp', 'image/svg+xml',
+      // PDF
+      'application/pdf', 'application/x-pdf',
+      // Word
       'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-      'text/plain'
+      // Excel
+      'application/vnd.ms-excel',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      // PowerPoint
+      'application/vnd.ms-powerpoint',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      // Text
+      'text/plain', 'text/csv',
+      // Archive
+      'application/zip', 'application/x-zip-compressed'
     ];
+    
+    console.log('Upload file:', file.originalname, 'MIME:', file.mimetype);
+    
     if (!file.mimetype || !allowedMimes.includes(file.mimetype)) {
-      return cb(new Error('Type de fichier non autorisé'));
+      console.log('Rejected MIME type:', file.mimetype);
+      return cb(new Error(`Type de fichier non autorisé: ${file.mimetype}`));
     }
     cb(null, true);
   }
@@ -93,7 +109,7 @@ router.post('/upload-photo', upload.single('photo'), async (req, res) => {
       return res.status(400).json({ error: 'Validation error', details: err.errors });
     }
     // Erreur multer (ex: fileFilter)
-    if (err instanceof multer.MulterError || err.message === 'Seules les images sont autorisées') {
+    if (err instanceof multer.MulterError || err.message?.includes('Type de fichier non autorisé')) {
       return res.status(400).json({ error: err.message });
     }
     return res.status(500).json({ error: 'Erreur lors de l\'upload' });

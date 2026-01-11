@@ -4,7 +4,7 @@ import { parseCookies } from '../utils/parseCookies.mjs';
 import jwt from 'jsonwebtoken';
 
 const origins = process.env.VITE_WS_HOST ?? 'localhost';
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
 
 function authCallback(token, request) {
   try {
