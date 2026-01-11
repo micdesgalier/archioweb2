@@ -20,7 +20,6 @@ const loading = ref(false);
 const sending = ref(false);
 
 // Attachment menu
-const showAttachMenu = ref(false);
 const fileInput = ref(null);
 const imageInput = ref(null);
 const cameraInput = ref(null);
@@ -378,12 +377,10 @@ onMounted(async () => {
 
     <!-- Input Bar -->
     <div class="input-bar">
-      <button class="add-btn" @click="showAttachMenu = !showAttachMenu">
+      <q-btn flat round class="add-btn">
         <q-icon name="add" />
-        
-        <!-- Attachment Menu -->
-        <q-menu v-model="showAttachMenu" anchor="top left" self="bottom left">
-          <q-list style="min-width: 200px">
+        <q-menu anchor="top left" self="bottom left">
+          <q-list style="min-width: 220px">
             <q-item clickable v-close-popup @click="openFilePicker">
               <q-item-section avatar>
                 <q-icon name="attach_file" color="primary" />
@@ -400,7 +397,7 @@ onMounted(async () => {
             
             <q-item clickable v-close-popup @click="openCamera">
               <q-item-section avatar>
-                <q-icon name="camera_alt" color="orange" />
+                <q-icon name="camera_alt" color="amber" />
               </q-item-section>
               <q-item-section>Prendre une photo</q-item-section>
             </q-item>
@@ -415,7 +412,7 @@ onMounted(async () => {
             </q-item>
           </q-list>
         </q-menu>
-      </button>
+      </q-btn>
       
       <!-- Hidden file inputs -->
       <input 
