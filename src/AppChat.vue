@@ -11,6 +11,7 @@
   import TheChatDetail from './components/TheChatDetail.vue';
   import TheProfilePage from './components/TheProfilePage.vue';
   import TheMatchPage from './components/TheMatchPage.vue';
+  import TheGroupsPage from './components/TheGroupsPage.vue';
   import { connectToChat, logout } from '@/store/chat.js';
 
   // Auth page state: 'login' or 'signup'
@@ -256,11 +257,10 @@
           @open-chat="openChat"
         />
 
-        <div v-else-if="currentTab === 'groups'" class="placeholder-page">
-          <q-icon name="groups" size="64px" color="grey-5" />
-          <p>Groupes</p>
-          <span>Bientôt disponible</span>
-        </div>
+        <TheGroupsPage 
+          v-else-if="currentTab === 'groups'"
+          @open-chat="openChat"
+        />
 
         <TheProfilePage 
           v-else-if="currentTab === 'profile'"

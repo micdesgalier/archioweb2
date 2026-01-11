@@ -50,8 +50,12 @@ const subjects = [
 // Get conversation partner's name (use partnerName if available, otherwise use name)
 const partnerName = computed(() => props.discussion.partnerName || props.discussion.name);
 
+// Check if this is a group chat
+const isGroupChat = computed(() => props.discussion.type === 'group');
+
 // Check if partner is online (for real-time indicator only)
 const isPartnerOnline = computed(() => {
+  if (isGroupChat.value) return true; // Groups are always "online"
   return users.value.some(user => {
     const userName = typeof user === 'string' ? user : user.name;
     return userName === partnerName.value;
@@ -93,6 +97,17 @@ function parseFile(content) {
 
 // Get messages for this specific conversation
 const messages = computed(() => {
+  if (isGroupChat.value) {
+    // TODO: Implement group messaging
+    return [{
+      _id: 'group-placeholder',
+      from: 'system',
+      content: 'Discussion de groupe bientôt disponible !',
+      timestamp: Date.now(),
+      type: 'system'
+    }];
+  }
+  
   const convMessages = privateMessages.value[partnerName.value] || [];
   console.log('Loading messages for:', partnerName.value, 'Count:', convMessages.length);
   return convMessages.map(msg => {
@@ -166,6 +181,16 @@ async function declineSession(message) {
 
 async function sendMessage() {
   if (!newMessage.value.trim() || sending.value) return;
+  
+  if (isGroupChat.value) {
+    $q.notify({
+      type: 'info',
+      message: 'Les discussions de groupe arrivent bientôt !',
+      timeout: 2000,
+      position: 'top',
+    });
+    return;
+  }
   
   sending.value = true;
   
