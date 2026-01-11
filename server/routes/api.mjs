@@ -11,7 +11,6 @@ import {
   markAsRead
 } from '../api/messages.mjs';
 
-// 🔽 UPLOAD ROUTER
 import uploadRouter from './upload.mjs';
 
 import { User } from '../models/User.mjs';
@@ -34,12 +33,11 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
 
 /**
- * Auth middleware compatible DEV / PROD / TEST
+ * Middleware d'authentification compatible DEV / PROD / TEST
+ * En mode test, génère un utilisateur fictif avec un ObjectId valide
  */
-
 function authMiddleware(req, res, next) {
   if (process.env.NODE_ENV === 'test') {
-    // ✅ Utiliser un ObjectId valide pour les tests
     const testUserId = new mongoose.Types.ObjectId();
 
     req.user = {
@@ -53,7 +51,7 @@ function authMiddleware(req, res, next) {
     return next();
   }
 
-  // Mode normal...
+  // Mode production : vérification du JWT
   try {
     const authHeader = req.headers.authorization;
     const token = authHeader?.startsWith('Bearer ')
@@ -76,20 +74,19 @@ function authMiddleware(req, res, next) {
 }
 
 /* =====================================================
- * AUTH
+ * AUTHENTIFICATION
  * ===================================================== */
 router.post('/auth/login', login);
 router.post('/auth/register', register);
 router.post('/auth/logout', logout);
 
 /* =====================================================
- * UPLOAD (IMPORTANT)
+ * UPLOAD DE FICHIERS
  * ===================================================== */
-// POST /api/upload-photo
 router.use(uploadRouter);
 
 /* =====================================================
- * PRIVATE MESSAGES
+ * MESSAGERIE PRIVÉE
  * ===================================================== */
 router.get('/pm/conversations', authMiddleware, getConversations);
 router.get('/pm/conversation/:partner', authMiddleware, getConversation);
@@ -97,13 +94,12 @@ router.post('/pm/send', authMiddleware, sendMessage);
 router.post('/pm/read/:partner', authMiddleware, markAsRead);
 
 /* =====================================================
- * CURRENT USER PROFILE
+ * PROFIL UTILISATEUR COURANT
  * ===================================================== */
 router.get('/me', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.sub;
     
-    // Récupérer l'utilisateur avec ses relations
     const user = await User.findById(userId)
       .populate('city_id institution_id field_id')
       .lean();
@@ -112,7 +108,7 @@ router.get('/me', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'Utilisateur introuvable' });
     }
 
-    // Récupérer les profils de matières de l'utilisateur
+    // Récupération des matières et niveaux de l'utilisateur
     const profiles = await UserSubjectProfile.find({ user_id: userId })
       .populate('subject_id')
       .lean();
@@ -124,7 +120,7 @@ router.get('/me', authMiddleware, async (req, res) => {
       level: p.level
     }));
 
-    // Récupérer les disponibilités de l'utilisateur
+    // Récupération des disponibilités
     const availabilities = await UserAvailability.find({ user_id: userId })
       .sort({ start_time: 1 })
       .lean();
@@ -141,7 +137,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 });
 
 /* =====================================================
- * USERS
+ * UTILISATEURS
  * ===================================================== */
 router.get('/users', async (req, res) => {
   try {
@@ -153,6 +149,9 @@ router.get('/users', async (req, res) => {
   }
 });
 
+/**
+ * Récupère tous les utilisateurs avec leurs matières associées
+ */
 router.get('/users-with-subjects', async (req, res) => {
   try {
     const users = await User.find()
@@ -163,6 +162,7 @@ router.get('/users-with-subjects', async (req, res) => {
       .populate('subject_id')
       .lean();
 
+    // Regroupement des matières par utilisateur
     const profilesByUser = {};
     profiles.forEach(p => {
       const id = p.user_id.toString();
@@ -199,12 +199,13 @@ router.get('/users/:id', async (req, res) => {
   res.json(user);
 });
 
-// UPDATE user
+/**
+ * Mise à jour d'un utilisateur
+ */
 router.put('/users/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérification ObjectId Mongo
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'ID utilisateur invalide' });
     }
@@ -222,7 +223,7 @@ router.put('/users/:id', async (req, res) => {
       'avatar_url',
     ];
 
-    // Construire l’objet de mise à jour
+    // Construction de l'objet de mise à jour avec uniquement les champs fournis
     const updates = {};
     for (const field of allowedFields) {
       if (req.body[field] !== undefined) {
@@ -230,17 +231,15 @@ router.put('/users/:id', async (req, res) => {
       }
     }
 
-    // Refuser une requête vide
     if (Object.keys(updates).length === 0) {
       return res.status(400).json({ error: 'Aucune donnée à mettre à jour' });
     }
 
-    // Mise à jour
     const updatedUser = await User.findByIdAndUpdate(
       id,
       { $set: updates },
       {
-        new: true,        // renvoie l’utilisateur mis à jour
+        new: true,
         runValidators: true,
       }
     )
@@ -253,11 +252,13 @@ router.put('/users/:id', async (req, res) => {
     res.json(updatedUser);
   } catch (err) {
     console.error('Update user error:', err);
-    res.status(500).json({ error: 'Impossible de mettre à jour l’utilisateur' });
+    res.status(500).json({ error: "Impossible de mettre à jour l'utilisateur" });
   }
 });
 
-// Cities
+/* =====================================================
+ * VILLES
+ * ===================================================== */
 router.get('/cities', async (req, res) => {
   try {
     const cities = await City.find();
@@ -272,7 +273,6 @@ router.get('/cities/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifier que l'id est un ObjectId valide
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'ID de ville invalide' });
     }
@@ -290,7 +290,9 @@ router.get('/cities/:id', async (req, res) => {
   }
 });
 
-// Institutions
+/* =====================================================
+ * INSTITUTIONS
+ * ===================================================== */
 router.get('/institutions', async (req, res) => {
   try {
     const institutions = await Institution.find().populate('city_id');
@@ -305,9 +307,8 @@ router.get('/institutions/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifier que l'id est un ObjectId valide
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-      return res.status(400).json({ error: 'ID de l’institution invalide' });
+      return res.status(400).json({ error: "ID de l'institution invalide" });
     }
 
     const institution = await Institution.findById(id).populate('city_id');
@@ -319,11 +320,13 @@ router.get('/institutions/:id', async (req, res) => {
     res.json(institution);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Impossible de récupérer l’institution" });
+    res.status(500).json({ error: "Impossible de récupérer l'institution" });
   }
 });
 
-// Fields of study
+/* =====================================================
+ * FILIÈRES D'ÉTUDES
+ * ===================================================== */
 router.get('/fields', async (req, res) => {
   try {
     const fields = await FieldOfStudy.find();
@@ -338,7 +341,6 @@ router.get('/fields/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifier que l'id est un ObjectId valide
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'ID de filière invalide' });
     }
@@ -356,7 +358,9 @@ router.get('/fields/:id', async (req, res) => {
   }
 });
 
-// Subjects
+/* =====================================================
+ * MATIÈRES
+ * ===================================================== */
 router.get('/subjects', async (req, res) => {
   try {
     const subjects = await Subject.find().populate('field_id');
@@ -371,7 +375,6 @@ router.get('/subjects/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifier que l'id est un ObjectId valide
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'ID de matière invalide' });
     }
@@ -389,7 +392,9 @@ router.get('/subjects/:id', async (req, res) => {
   }
 });
 
-// User subject profiles
+/* =====================================================
+ * PROFILS MATIÈRE/UTILISATEUR
+ * ===================================================== */
 router.get('/user-subject-profiles', async (req, res) => {
   try {
     const profiles = await UserSubjectProfile.find()
@@ -405,7 +410,6 @@ router.get('/user-subject-profiles/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifier que l'id est un ObjectId valide
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'ID de profil utilisateur-matière invalide' });
     }
@@ -424,7 +428,9 @@ router.get('/user-subject-profiles/:id', async (req, res) => {
   }
 });
 
-// Study groups
+/* =====================================================
+ * GROUPES D'ÉTUDE
+ * ===================================================== */
 router.get('/study-groups', async (req, res) => {
   try {
     const groups = await StudyGroup.find()
@@ -440,7 +446,6 @@ router.get('/study-groups/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifier que l'id est un ObjectId valide
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'ID de study group invalide' });
     }
@@ -459,9 +464,10 @@ router.get('/study-groups/:id', async (req, res) => {
   }
 });
 
-/* =====================================================
- * STUDY GROUPS (CREATE)
- * ===================================================== */
+/**
+ * Création d'un study group
+ * Le créateur est automatiquement défini depuis le token JWT
+ */
 router.post('/study-groups', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.sub;  
@@ -478,18 +484,16 @@ router.post('/study-groups', authMiddleware, async (req, res) => {
       max_members,
     } = req.body;
 
-    // validations minimales
     if (!title || typeof is_online !== 'boolean') {
       return res.status(400).json({
         error: 'Titre et is_online sont requis',
       });
     }
 
-    // Création du groupe
     const group = await StudyGroup.create({
       title,
       description,
-      creator_id: userId, // 🔐 sécurisé
+      creator_id: userId,
       subject_id: subject_id || null,
       city_id: is_online ? null : city_id || null,
       location_detail,
@@ -502,23 +506,23 @@ router.post('/study-groups', authMiddleware, async (req, res) => {
     res.status(201).json(group);
   } catch (err) {
     console.error('Create study group error:', err);
-
     res.status(400).json({
       error: err.message || 'Impossible de créer le study group',
     });
   }
 });
 
-// Stats: nombre de study groups créés par utilisateur
+/**
+ * Statistiques : nombre de study groups créés par utilisateur
+ */
 router.get('/stats/user-study-groups', async (req, res) => {
   try {
-    // récupère le nom réel de la collection studygroups (fonctionne même si tu changes le nom)
     const studyGroupColl = StudyGroup.collection.name;
 
     const stats = await User.aggregate([
       {
         $lookup: {
-          from: studyGroupColl,      // jointure vers la collection des StudyGroup
+          from: studyGroupColl,
           localField: '_id',
           foreignField: 'creator_id',
           as: 'groups'
@@ -531,10 +535,10 @@ router.get('/stats/user-study-groups', async (req, res) => {
           email: '$email',
           first_name: '$first_name',
           last_name: '$last_name',
-          totalGroups: { $size: '$groups' } // nombre de groupes créés
+          totalGroups: { $size: '$groups' }
         }
       },
-      { $sort: { totalGroups: -1, email: 1 } } // tri: plus actifs en premier
+      { $sort: { totalGroups: -1, email: 1 } }
     ]);
 
     res.json(stats);
@@ -544,7 +548,9 @@ router.get('/stats/user-study-groups', async (req, res) => {
   }
 });
 
-// Group members
+/* =====================================================
+ * MEMBRES DE GROUPES
+ * ===================================================== */
 router.get('/group-members', async (req, res) => {
   try {
     const members = await GroupMember.find().populate('user_id group_id');
@@ -555,7 +561,9 @@ router.get('/group-members', async (req, res) => {
   }
 });
 
-// Join a group
+/**
+ * Rejoindre un groupe d'étude
+ */
 router.post('/group-members', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.sub;
@@ -565,7 +573,7 @@ router.post('/group-members', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'group_id est requis' });
     }
 
-    // Check if already a member
+    // Vérifier si l'utilisateur est déjà membre
     const existing = await GroupMember.findOne({
       group_id,
       user_id: userId,
@@ -576,7 +584,6 @@ router.post('/group-members', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Vous êtes déjà membre de ce groupe' });
     }
 
-    // Create membership
     const member = await GroupMember.create({
       group_id,
       user_id: userId,
@@ -598,7 +605,6 @@ router.get('/group-members/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifier que l'id est un ObjectId valide
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'ID de membre de groupe invalide' });
     }
@@ -617,14 +623,13 @@ router.get('/group-members/:id', async (req, res) => {
   }
 });
 
-// Get group messages (last message and unread count)
+/**
+ * Récupération des messages d'un groupe (placeholder pour futur système de messagerie de groupe)
+ */
 router.get('/group-messages/:groupId', async (req, res) => {
   try {
     const { groupId } = req.params;
 
-    // For now, return empty since group messaging uses a different system
-    // This will be implemented when group messaging is fully set up
-    // For now, we'll check if there's a conversation for this group
     const conversation = await Conversation.findOne({ type: 'group', group_id: groupId });
     
     if (!conversation) {
@@ -634,8 +639,7 @@ router.get('/group-messages/:groupId', async (req, res) => {
       });
     }
 
-    // TODO: When group messaging is implemented, fetch actual last message
-    // For now, return placeholder
+    // TODO: Implémenter la messagerie de groupe complète
     res.json({
       lastMessage: null,
       unreadCount: 0
@@ -646,7 +650,9 @@ router.get('/group-messages/:groupId', async (req, res) => {
   }
 });
 
-// Conversations
+/* =====================================================
+ * CONVERSATIONS
+ * ===================================================== */
 router.get('/conversations', async (req, res) => {
   try {
     const convos = await Conversation.find().populate('group_id');
@@ -660,8 +666,7 @@ router.get('/conversations', async (req, res) => {
 router.get('/conversations/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log("A");
-    // Vérifier que l'id est un ObjectId valide
+
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'ID de conversation invalide' });
     }
@@ -679,7 +684,9 @@ router.get('/conversations/:id', async (req, res) => {
   }
 });
 
-// Conversation participants
+/* =====================================================
+ * PARTICIPANTS DE CONVERSATIONS
+ * ===================================================== */
 router.get('/conversation-participants', async (req, res) => {
   try {
     const parts = await ConversationParticipant.find().populate('conversation_id user_id');
@@ -694,7 +701,6 @@ router.get('/conversation-participants/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifier que l'id est un ObjectId valide
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'ID de participant de conversation invalide' });
     }
@@ -713,10 +719,14 @@ router.get('/conversation-participants/:id', async (req, res) => {
   }
 });
 
-// Messages (dernier batch)
+/* =====================================================
+ * MESSAGES
+ * ===================================================== */
+/**
+ * Récupération des 100 derniers messages (ordre décroissant)
+ */
 router.get('/messages', async (req, res) => {
   try {
-    // par défaut : renvoyer les 100 derniers messages
     const messages = await Message.find()
       .sort({ created_at: -1 })
       .limit(100)
@@ -728,23 +738,22 @@ router.get('/messages', async (req, res) => {
   }
 });
 
-// GET /api/messages/paginated?page=1&limit=20
+/**
+ * Récupération paginée des messages
+ */
 router.get('/messages/paginated', async (req, res) => {
   try {
-    // Récupérer page et limit depuis query params
     const page = Math.max(parseInt(req.query.page) || 1, 1);
-    const limit = Math.min(parseInt(req.query.limit) || 20, 100); // max 100 par page
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const skip = (page - 1) * limit;
 
-    // Récupérer les messages avec pagination
     const messages = await Message.find()
-      .sort({ timestamp: -1 }) // les plus récents d'abord
+      .sort({ timestamp: -1 })
       .skip(skip)
       .limit(limit)
       .populate('sender_id receiver_id conversation_id')
       .lean();
 
-    // Compter le total pour savoir combien de pages
     const total = await Message.countDocuments();
 
     res.json({
@@ -777,7 +786,6 @@ router.get('/messages/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Vérifier que l'id est un ObjectId valide
     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
       return res.status(400).json({ error: 'ID de message invalide' });
     }
@@ -796,7 +804,9 @@ router.get('/messages/:id', async (req, res) => {
   }
 });
 
-// GET /api/privatem/conversation/:username
+/**
+ * Récupération d'une conversation privée avec un utilisateur spécifique
+ */
 router.get('/privatem/conversation/:username', authMiddleware, async (req, res) => {
   try {
     const currentUserId = req.userId || req.user?._id || req.user?.sub;
@@ -806,10 +816,10 @@ router.get('/privatem/conversation/:username', authMiddleware, async (req, res) 
 
     const { username } = req.params;
     if (!username) {
-      return res.status(400).json({ error: 'Nom d’utilisateur requis' });
+      return res.status(400).json({ error: "Nom d'utilisateur requis" });
     }
 
-    // 🔍 Récupérer l'utilisateur cible par son prénom ou email (ou autre selon besoin)
+    // Recherche de l'utilisateur cible par prénom ou email
     const otherUser = await User.findOne({
       $or: [
         { first_name: username },
@@ -821,7 +831,7 @@ router.get('/privatem/conversation/:username', authMiddleware, async (req, res) 
       return res.status(404).json({ error: `Utilisateur '${username}' non trouvé` });
     }
 
-    // 🔍 Trouver la conversation privée entre les deux utilisateurs
+    // Recherche de la conversation entre les deux utilisateurs
     const conversation = await Conversation.findOne({
       type: 'private',
       members: { $all: [currentUserId, otherUser._id] }
@@ -831,9 +841,9 @@ router.get('/privatem/conversation/:username', authMiddleware, async (req, res) 
       return res.status(404).json({ error: 'Conversation privée non trouvée' });
     }
 
-    // 🔹 Récupérer tous les messages de cette conversation, triés par timestamp
+    // Récupération de tous les messages de la conversation
     const messages = await Message.find({ conversation_id: conversation._id })
-      .sort({ timestamp: 1 }) // plus ancien -> plus récent
+      .sort({ timestamp: 1 })
       .populate('sender_id', 'first_name last_name avatar_url email')
       .populate('receiver_id', 'first_name last_name avatar_url email')
       .lean();
@@ -852,10 +862,11 @@ router.get('/privatem/conversation/:username', authMiddleware, async (req, res) 
   }
 });
 
-// GET /api/privatem/conversations
+/**
+ * Récupération de toutes les conversations privées de l'utilisateur avec leurs messages récents
+ */
 router.get('/privatem/conversations', authMiddleware, async (req, res) => {
   try {
-    // récupère l'id de l'utilisateur depuis le middleware
     const userId = req.userId || req.user?.sub || req.user?._id;
     if (!userId) {
       console.warn('No userId in request (token payload):', req.user);
@@ -864,25 +875,21 @@ router.get('/privatem/conversations', authMiddleware, async (req, res) => {
 
     console.log('🔍 Recherche conversations pour userId:', userId);
 
-    // Récupère les conversations privées où l'utilisateur est membre
-    // populate members (info basique) et group_id si présent
     const conversations = await Conversation.find({
       type: 'private',
       members: { $in: [userId] }
     })
-      .populate('members', 'first_name last_name email avatar_url') // info utile côté client
+      .populate('members', 'first_name last_name email avatar_url')
       .populate('group_id')
       .lean();
 
     console.log('✅ Conversations trouvées:', conversations.length);
 
-    // Pour chaque conversation, récupérer les derniers messages (limit configurable)
     const MSG_LIMIT = 50;
 
     const conversationsWithMessages = await Promise.all(
       conversations.map(async (convo) => {
-        // récupérer les derniers MSG_LIMIT messages triés du plus récent au plus ancien,
-        // puis on inverse pour retourner ordre chronologique ascendant (ancien -> récent)
+        // Récupération des derniers messages (ordre inversé puis remis chronologiquement)
         const msgs = await Message.find({ conversation_id: convo._id })
           .sort({ timestamp: -1 })
           .limit(MSG_LIMIT)
@@ -890,10 +897,8 @@ router.get('/privatem/conversations', authMiddleware, async (req, res) => {
           .populate('receiver_id', 'first_name last_name avatar_url email')
           .lean();
 
-        // remettre dans l'ordre chronologique (plus ancien -> plus récent)
         msgs.reverse();
 
-        // optionnel : inclure un count total de messages pour la conversation
         const totalMessages = await Message.countDocuments({ conversation_id: convo._id });
 
         return {
@@ -911,8 +916,20 @@ router.get('/privatem/conversations', authMiddleware, async (req, res) => {
   }
 });
 
-// Attachments
+/* =====================================================
+ * PIÈCES JOINTES
+ * ===================================================== */
 router.get('/attachments', async (req, res) => {
+  try {
+    const atts = await Attachment.find().populate('message_id');
+    res.json(atts);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Impossible de récupérer les pièces jointes" });
+  }
+});
+
+router.get('/attachments/:id', async (req, res) => {
   try {
     const atts = await Attachment.find().populate('message_id');
     res.json(atts);

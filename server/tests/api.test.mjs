@@ -10,6 +10,10 @@ import { City } from '../models/City.mjs';
 let mongod;
 let app;
 
+/**
+ * Configuration initiale des tests : création d'une base MongoDB en mémoire
+ * et initialisation de l'application Express
+ */
 beforeAll(async () => {
   mongod = await MongoMemoryServer.create();
   const uri = mongod.getUri();
@@ -21,11 +25,17 @@ beforeAll(async () => {
   app.use('/api', apiRouter);
 });
 
+/**
+ * Nettoyage après tous les tests : déconnexion et arrêt du serveur MongoDB
+ */
 afterAll(async () => {
   await mongoose.disconnect();
   await mongod.stop();
 });
 
+/**
+ * Nettoyage avant chaque test : suppression des données pour garantir l'isolation
+ */
 beforeEach(async () => {
   await User.deleteMany({});
   await StudyGroup.deleteMany({});
@@ -33,9 +43,7 @@ beforeEach(async () => {
 
 describe('API tests', () => {
 
-  // === NOUVEAU TEST ===
   it('GET /api/cities renvoie la liste des villes', async () => {
-    // On peut mocker des villes directement dans MongoDB si tu as un modèle City
     const citiesData = [
         { name: 'Lausanne', country: 'Suisse', postal_code: '1000' },
         { name: 'Yverdon-les-Bains', country: 'Suisse', postal_code: '1400' },
@@ -45,9 +53,8 @@ describe('API tests', () => {
         { name: 'Vevey', country: 'Suisse', postal_code: '1800' }
     ];
 
-    // Si tu as un modèle Mongoose City :
     await City.deleteMany({});
-    const insertedCities = await City.insertMany(citiesData);
+    await City.insertMany(citiesData);
 
     const res = await request(app).get('/api/cities');
 
@@ -57,8 +64,7 @@ describe('API tests', () => {
     const names = res.body.map(c => c.name);
     expect(names).toContain('Lausanne');
     expect(names).toContain('Vevey');
-    });
-
+  });
 
   it('PUT /api/users/:id met à jour un utilisateur', async () => {
     const user = await User.create({
@@ -99,7 +105,7 @@ describe('API tests', () => {
         title: 'Math Group',
         description: 'Group for math students',
         is_online: true,
-        creator_id: user._id.toString() // ObjectId valide
+        creator_id: user._id.toString()
       });
 
     expect(res.status).toBe(201);
@@ -116,7 +122,7 @@ describe('API tests', () => {
     expect(res.body.error).toMatch(/Titre et is_online sont requis/);
   });
 
-  it('GET /api/study-groups/:id renvoie un groupe d’études', async () => {
+  it("GET /api/study-groups/:id renvoie un groupe d'études", async () => {
     const user = await User.create({
       first_name: 'Creator',
       last_name: 'User',
@@ -160,7 +166,7 @@ describe('API tests', () => {
     expect(res.body.first_name).toBe('Charlie');
   });
 
-  it('GET /api/users/:id renvoie 404 si l’utilisateur n’existe pas', async () => {
+  it("GET /api/users/:id renvoie 404 si l'utilisateur n'existe pas", async () => {
     const id = new mongoose.Types.ObjectId();
     const res = await request(app).get(`/api/users/${id}`);
     expect(res.status).toBe(404);

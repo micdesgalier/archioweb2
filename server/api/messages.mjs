@@ -4,19 +4,14 @@ import User from '../models/User.mjs';
 import { wsServer } from '../store/wsStore.mjs';
 
 /**
- * Get conversation history between two users
+ * Récupérer l'historique de conversation entre l'utilisateur connecté et un partenaire
  */
 export async function getConversation(req, res) {
   const { partner } = req.params;
   const currentUser = req.user?.firstName;
 
-  if (!currentUser) {
-    return res.status(401).json({ error: 'Non authentifié' });
-  }
-
-  if (!partner) {
-    return res.status(400).json({ error: 'Partenaire de conversation requis' });
-  }
+  if (!currentUser) return res.status(401).json({ error: 'Non authentifié' });
+  if (!partner) return res.status(400).json({ error: 'Partenaire de conversation requis' });
 
   try {
     const messages = await Message.find({
@@ -25,33 +20,29 @@ export async function getConversation(req, res) {
         { from: partner, to: currentUser }
       ]
     })
-    .sort({ timestamp: 1 })
-    .limit(100)
-    .lean();
+      .sort({ timestamp: 1 }) // tri chronologique
+      .limit(100)
+      .lean();
 
     res.json(messages);
   } catch (err) {
-    console.error('Error fetching conversation:', err);
+    console.error('Erreur lors de la récupération des messages :', err);
     res.status(500).json({ error: 'Erreur lors de la récupération des messages' });
   }
 }
 
 /**
- * Get all conversations for the current user
+ * Récupérer toutes les conversations de l'utilisateur connecté
  */
 export async function getConversations(req, res) {
   const currentUser = req.user?.firstName;
-
-  if (!currentUser) {
-    return res.status(401).json({ error: 'Non authentifié' });
-  }
+  if (!currentUser) return res.status(401).json({ error: 'Non authentifié' });
 
   try {
     const sentMessages = await Message.distinct('to', { from: currentUser });
     const receivedMessages = await Message.distinct('from', { to: currentUser });
-    
-    const partners = [...new Set([...sentMessages, ...receivedMessages])];
-    
+    const partners = [...new Set([...sentMessages, ...receivedMessages])]; // éviter doublons
+
     const conversations = await Promise.all(partners.map(async (partner) => {
       const lastMessage = await Message.findOne({
         $or: [
@@ -59,8 +50,8 @@ export async function getConversations(req, res) {
           { from: partner, to: currentUser }
         ]
       })
-      .sort({ timestamp: -1 })
-      .lean();
+        .sort({ timestamp: -1 })
+        .lean();
 
       const unreadCount = await Message.countDocuments({
         from: partner,
@@ -68,13 +59,10 @@ export async function getConversations(req, res) {
         read: false
       });
 
-      return {
-        partner,
-        lastMessage,
-        unreadCount
-      };
+      return { partner, lastMessage, unreadCount };
     }));
 
+    // Tri par dernier message
     conversations.sort((a, b) => {
       const timeA = a.lastMessage?.timestamp || 0;
       const timeB = b.lastMessage?.timestamp || 0;
@@ -83,41 +71,28 @@ export async function getConversations(req, res) {
 
     res.json(conversations);
   } catch (err) {
-    console.error('Error fetching conversations:', err);
+    console.error('Erreur lors de la récupération des conversations :', err);
     res.status(500).json({ error: 'Erreur lors de la récupération des conversations' });
   }
 }
 
+/**
+ * Envoyer un message privé
+ */
 export async function sendMessage(req, res) {
-  console.log("TESSSSSSST");
   const { to, content } = req.body;
-  const currentUserId = req.user?._id; // ObjectId de l'utilisateur connecté
+  const currentUserId = req.user?._id;
   const currentUserName = req.user?.firstName || req.user?.username;
 
-  if (!currentUserId) {
-    return res.status(401).json({ error: 'Non authentifié' });
-  }
-
-  if (!to || !content) {
-    return res.status(400).json({ error: 'Destinataire et contenu requis' });
-  }
-
-  if (content.length > 2000) {
-    return res.status(400).json({ error: 'Message trop long (max 2000 caractères)' });
-  }
+  if (!currentUserId) return res.status(401).json({ error: 'Non authentifié' });
+  if (!to || !content) return res.status(400).json({ error: 'Destinataire et contenu requis' });
+  if (content.length > 2000) return res.status(400).json({ error: 'Message trop long (max 2000 caractères)' });
 
   try {
-    // Trouver le destinataire par username
     const recipient = await User.findOne({ first_name: to });
-    if (!recipient) {
-      console.log(to);
-      return res.status(404).json({ error: 'Destinataire introuvable' });
-    }
+    if (!recipient) return res.status(404).json({ error: 'Destinataire introuvable' });
 
-    // Toujours trier les IDs pour éviter doublons A-B / B-A
-    const participants = [currentUserId, recipient._id].sort();
-
-    // Chercher conversation existante
+    // Chercher ou créer la conversation privée
     let conversation = await Conversation.findOne({
       type: 'private',
       members: { $all: [currentUserId, recipient._id] }
@@ -126,7 +101,7 @@ export async function sendMessage(req, res) {
     if (!conversation) {
       conversation = await Conversation.create({
         type: 'private',
-        members: [currentUserId, recipient._id] // ✅ BON CHAMP
+        members: [currentUserId, recipient._id]
       });
     }
 
@@ -156,43 +131,37 @@ export async function sendMessage(req, res) {
       read: message.read
     };
 
-    // Envoi WebSocket
+    // Envoi du message via WebSocket aux participants connectés
     try {
       if (wsServer) {
         const allClients = wsServer.getChannelClients('chat');
 
         const toClients = allClients.filter(c => wsServer.clients.get(c)?.username === to);
-        for (const toSocket of toClients) {
-          wsServer.sendCmd(toSocket, 'pm', messageData);
-        }
+        toClients.forEach(c => wsServer.sendCmd(c, 'pm', messageData));
 
         const fromClients = allClients.filter(c => wsServer.clients.get(c)?.username === currentUserName);
-        for (const fromSocket of fromClients) {
-          wsServer.sendCmd(fromSocket, 'pm', messageData);
-        }
+        fromClients.forEach(c => wsServer.sendCmd(c, 'pm', messageData));
       }
     } catch (wsErr) {
-      console.log('WebSocket send failed (user may be offline):', wsErr.message);
+      console.log('WebSocket send failed (utilisateur peut être hors ligne) :', wsErr.message);
     }
 
     res.json(messageData);
 
   } catch (err) {
-    console.error('Error sending message:', err);
+    console.error('Erreur lors de l\'envoi du message :', err);
     res.status(500).json({ error: 'Erreur lors de l\'envoi du message' });
   }
 }
 
 /**
- * Mark messages as read
+ * Marquer tous les messages d'un partenaire comme lus
  */
 export async function markAsRead(req, res) {
   const { partner } = req.params;
   const currentUser = req.user?.firstName;
 
-  if (!currentUser) {
-    return res.status(401).json({ error: 'Non authentifié' });
-  }
+  if (!currentUser) return res.status(401).json({ error: 'Non authentifié' });
 
   try {
     await Message.updateMany(
@@ -202,8 +171,7 @@ export async function markAsRead(req, res) {
 
     res.json({ success: true });
   } catch (err) {
-    console.error('Error marking messages as read:', err);
+    console.error('Erreur lors du marquage des messages comme lus :', err);
     res.status(500).json({ error: 'Erreur' });
   }
 }
-

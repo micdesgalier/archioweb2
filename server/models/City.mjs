@@ -23,7 +23,7 @@ const citySchema = new Schema({
     maxlength: 20,
   },
 }, {
-  timestamps: false, // pas de created_at / updated_at dans la table SQL
+  timestamps: false, 
   toJSON: {
     transform: (doc, ret) => {
       ret.id = ret._id;

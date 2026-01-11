@@ -2,36 +2,29 @@ import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { User } from '../models/User.mjs';
 
+// Clés et configurations JWT
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
-const CHAT_PWD = process.env.CHAT_PWD;
 
+/**
+ * Connexion d'un utilisateur
+ */
 export async function login(req, res) {
-  const { username, password, rememberMe = false } = req.body;
-  
-  if (!username) {
-    return res.status(400).json({ error: 'Email requis' });
-  }
-  if (!password) {
-    return res.status(400).json({ error: 'Mot de passe requis' });
-  }
+  const { username, password } = req.body;
+
+  if (!username) return res.status(400).json({ error: 'Email requis' });
+  if (!password) return res.status(400).json({ error: 'Mot de passe requis' });
 
   try {
-    // Find user by email
+    // Recherche de l'utilisateur par email
     const user = await User.findOne({ email: username.toLowerCase() });
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-    }
+    if (!user) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
 
-    // Check password
+    // Vérification du mot de passe
     const isValidPassword = await bcrypt.compare(password, user.password_hash);
-    
-    if (!isValidPassword) {
-      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-    }
+    if (!isValidPassword) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
 
-    // Create JWT token
+    // Création du token JWT
     const token = jwt.sign(
       { 
         sub: user._id.toString(),
@@ -40,84 +33,71 @@ export async function login(req, res) {
         lastName: user.last_name
       },
       JWT_SECRET,
-      {
-        expiresIn: JWT_EXPIRES_IN,
-        algorithm: 'HS256'
-      }
+      { expiresIn: JWT_EXPIRES_IN, algorithm: 'HS256' }
     );
 
-    const maxAge = parseExpirationTime(JWT_EXPIRES_IN);
-    
+    // Définir le cookie avec la durée d'expiration du token
     res.cookie('auth_token', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge
-      });
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: parseExpirationTime(JWT_EXPIRES_IN)
+    });
 
     res.json(token);
   } catch (err) {
-    console.error('Login error:', err);
+    console.error('Erreur lors de la connexion:', err);
     res.status(500).json({ error: 'Erreur lors de la connexion' });
   }
 }
 
 /**
- * Convert JWT expiration string to milliseconds
- * @param {string} expiresIn - JWT expiration string (e.g., '15m', '1h', '7d')
- * @returns {number} - Milliseconds
+ * Convertit une durée JWT (ex: "7d", "1h") en millisecondes
  */
 function parseExpirationTime(expiresIn) {
   const match = expiresIn.match(/^(\d+)([smhd])$/);
-  if (!match) return 15 * 60 * 1000; // default 15 minutes
+  if (!match) return 15 * 60 * 1000; // 15 minutes par défaut
 
   const [, value, unit] = match;
   const num = parseInt(value);
 
   const units = {
-    s: 1000,           // seconds
-    m: 60 * 1000,      // minutes
-    h: 60 * 60 * 1000, // hours
-    d: 24 * 60 * 60 * 1000 // days
+    s: 1000,
+    m: 60 * 1000,
+    h: 60 * 60 * 1000,
+    d: 24 * 60 * 60 * 1000
   };
 
   return num * (units[unit] || units.m);
 }
 
 /**
- * Register a new user
+ * Création d'un nouvel utilisateur
  */
 export async function register(req, res) {
   const { nom, prenom, email, dateNaissance, password } = req.body;
 
-  // Validation
+  // Validation des champs obligatoires
   if (!nom || !prenom || !email || !password) {
     return res.status(400).json({ error: 'Tous les champs obligatoires doivent être remplis' });
   }
 
-  // Email format validation
+  // Vérification du format de l'email
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email)) {
-    return res.status(400).json({ error: 'Format d\'email invalide' });
-  }
+  if (!emailRegex.test(email)) return res.status(400).json({ error: 'Format d\'email invalide' });
 
-  // Password minimum length
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères' });
-  }
+  // Vérification de la longueur minimale du mot de passe
+  if (password.length < 6) return res.status(400).json({ error: 'Le mot de passe doit contenir au moins 6 caractères' });
 
   try {
-    // Check if email already exists
+    // Vérification que l'email n'existe pas déjà
     const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return res.status(409).json({ error: 'Cet email est déjà utilisé' });
-    }
+    if (existingUser) return res.status(409).json({ error: 'Cet email est déjà utilisé' });
 
-    // Hash password
-    const saltRounds = 10;
-    const password_hash = await bcrypt.hash(password, saltRounds);
+    // Hashage du mot de passe
+    const password_hash = await bcrypt.hash(password, 10);
 
-    // Create user
+    // Création de l'utilisateur
     const newUser = new User({
       first_name: prenom,
       last_name: nom,
@@ -138,7 +118,7 @@ export async function register(req, res) {
       }
     });
   } catch (err) {
-    console.error('Registration error:', err);
+    console.error('Erreur lors de la création du compte:', err);
     res.status(500).json({ error: 'Erreur lors de la création du compte' });
   }
 }
