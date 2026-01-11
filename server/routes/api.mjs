@@ -747,6 +747,19 @@ router.get('/messages/paginated', async (req, res) => {
   }
 });
 
+router.get('/messages/:id/attachments', async (req, res) => {
+  try {
+    const attachments = await Attachment.find({
+      message_id: req.params.id
+    }).lean();
+
+    res.json(attachments);
+  } catch (err) {
+    console.error('Error loading attachments:', err);
+    res.status(500).json({ error: 'Erreur chargement pièces jointes' });
+  }
+});
+
 router.get('/messages/:id', async (req, res) => {
   try {
     const { id } = req.params;

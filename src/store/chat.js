@@ -57,6 +57,12 @@ function addPrivateMessage(msg) {
   }
 }
 
+export async function loadMessageAttachments(messageId) {
+  const response = await fetch(`/api/messages/${messageId}/attachments`);
+  if (!response.ok) return [];
+  return response.json();
+}
+
 // Load all users from database (with their subject profiles)
 export async function loadAllUsers() {
   try {
@@ -152,10 +158,17 @@ export async function loadConversation(partner) {
       const data = await response.json(); // <- objet avec {conversation, messages}
       
       // Accéder au tableau messages
-      privateMessages.value[partner] = data.messages.map(msg => ({
-        ...msg,
-        timestamp: new Date(msg.timestamp).getTime()
-      }));
+      privateMessages.value[partner] = await Promise.all(
+        data.messages.map(async msg => {
+          if (msg.content === '[IMAGE]') {
+            msg.attachments = await loadMessageAttachments(msg._id);
+          }
+          return {
+            ...msg,
+            timestamp: new Date(msg.timestamp).getTime()
+          };
+        })
+      );
     }
   } catch (err) {
     console.error('Error loading conversation:', err);

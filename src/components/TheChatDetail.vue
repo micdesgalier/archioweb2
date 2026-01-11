@@ -79,7 +79,8 @@ function parseSessionProposal(content) {
 // Parse image from message content
 function parseImage(content) {
   if (content?.startsWith('[IMAGE]')) {
-    return content.replace('[IMAGE]', '');
+    const url = content.replace('[IMAGE]', '');
+    return url.startsWith('/uploads') ? url : `/uploads${url}`;
   }
   return null;
 }
@@ -98,7 +99,6 @@ function parseFile(content) {
 
 const messages = computed(() => {
   if (isGroupChat.value) {
-    // TODO: Implement group messaging
     return [{
       _id: 'group-placeholder',
       from: 'system',
@@ -107,46 +107,42 @@ const messages = computed(() => {
       type: 'system'
     }];
   }
-  
-  const convMessages = privateMessages.value[partnerName.value] || [];
 
-  // debug rapide
-  // console.log('privateMessages for', partnerName.value, convMessages);
+  const convMessages = privateMessages.value[partnerName.value] || [];
 
   return convMessages.map(msg => {
     const sessionProposal = parseSessionProposal(msg.content);
-    const imageUrl = parseImage(msg.content);
     const fileInfo = parseFile(msg.content);
 
-    // --- Normaliser sender id venant du serveur ---
-    // Possibilités rencontrées : msg.sender_id (ObjectId ou objet peuplé), msg.from, msg.sender
+    // ✅ IMAGE = content === "[IMAGE]" + attachment
+    const isImage = msg.content === '[IMAGE]';
+    const imageUrl =
+      isImage && msg.attachments?.length
+        ? msg.attachments[0].file_url
+        : null;
+
     const rawSender = msg.sender_id ?? msg.from ?? msg.sender ?? msg.senderId ?? null;
-
-    // Si msg.sender_id est un objet peuplé { _id: '...' }, récupérer _id
     const senderId = rawSender?._id ?? rawSender;
-
-    // currentUserId est un ref; utiliser .value et comparer en string
     const currentId = currentUserId?.value ?? null;
 
-    const sent = senderId != null && currentId != null && String(senderId) === String(currentId);
-
-    // debug console (décommente si besoin)
-    // console.log('MSG debug:', { id: msg._id ?? msg.timestamp, senderId, currentId, sent });
+    const sent =
+      senderId != null &&
+      currentId != null &&
+      String(senderId) === String(currentId);
 
     return {
       id: msg._id || msg.timestamp,
-      // selon ton modèle le texte est stocké dans `content`
-      text: (sessionProposal || imageUrl || fileInfo) ? null : (msg.content ?? msg.text ?? ''),
+      text: (!sessionProposal && !isImage && !fileInfo)
+        ? (msg.content ?? '')
+        : null,
       sessionProposal,
       imageUrl,
       fileInfo,
-      time: new Date(msg.timestamp || msg.created_at || Date.now()).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+      time: new Date(msg.timestamp || msg.created_at || Date.now())
+        .toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       sent,
       read: msg.read || false,
-      // fallback pour username
-      username: msg.sender_name || msg.sender || msg.from || (senderId ? undefined : partnerName.value),
-      // expose raw fields si besoin pour debug côté template
-      _rawSender: senderId,
+      username: msg.sender_name || msg.sender || msg.from || partnerName.value,
       _rawMessage: msg
     };
   });
@@ -264,56 +260,43 @@ function formatFileSize(bytes) {
 
 async function uploadAndSendFile(file) {
   if (!file) return;
-  
+
   const isImage = file.type.startsWith('image/');
-  
-  // Show loading notification
+
   const loadingNotif = $q.notify({
     type: 'ongoing',
     message: 'Envoi en cours...',
     spinner: true,
     timeout: 0
   });
-  
+
   try {
-    // Upload the file
+    // 1️⃣ CRÉER LE MESSAGE D’ABORD
+    const placeholder = isImage ? '[IMAGE]' : '[FILE]';
+    const message = await sendPrivateMessage(partnerName.value, placeholder);
+
+    // 2️⃣ UPLOAD DU FICHIER AVEC message_id
     const formData = new FormData();
     formData.append('photo', file);
-    
+    formData.append('message_id', message._id); // ⭐ LA LIGNE IMPORTANTE
+
     const response = await fetch('/api/upload-photo', {
       method: 'POST',
       body: formData
     });
-    
+
     if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error || 'Erreur upload');
+      const err = await response.json();
+      throw new Error(err.error || 'Erreur upload');
     }
-    
-    const data = await response.json();
-    
-    let messageContent;
-    if (isImage) {
-      // Send message with image URL
-      messageContent = `[IMAGE]${data.file.file_url}`;
-    } else {
-      // Send message with file info
-      messageContent = `[FILE]${JSON.stringify({
-        url: data.file.file_url,
-        name: data.file.originalname,
-        size: data.file.file_size,
-        type: data.file.mime_type
-      })}`;
-    }
-    
-    await sendPrivateMessage(partnerName.value, messageContent);
-    
+
     loadingNotif();
     $q.notify({
       type: 'positive',
       message: isImage ? 'Image envoyée !' : 'Fichier envoyé !',
       timeout: 2000
     });
+
   } catch (err) {
     loadingNotif();
     console.error('Upload error:', err);
@@ -324,6 +307,7 @@ async function uploadAndSendFile(file) {
     });
   }
 }
+
 
 function handleFileSelect(event) {
   const file = event.target.files[0];
