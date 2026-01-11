@@ -10,7 +10,7 @@ const emit = defineEmits(['change-tab']);
 
 const tabs = [
   { id: 'home', icon: 'school', label: 'Accueil' },
-  { id: 'favorites', icon: 'favorite_border', label: 'Favoris' },
+  { id: 'favorites', icon: 'favorite', label: 'Match' },
   { id: 'groups', icon: 'groups', label: 'Groupes' },
   { id: 'discussions', icon: 'chat_bubble_outline', label: 'Discussions' },
   { id: 'profile', icon: 'person_outline', label: 'Profil' }

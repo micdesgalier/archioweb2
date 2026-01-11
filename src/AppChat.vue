@@ -10,6 +10,7 @@
   import TheDiscussionsList from './components/TheDiscussionsList.vue';
   import TheChatDetail from './components/TheChatDetail.vue';
   import TheProfilePage from './components/TheProfilePage.vue';
+  import TheMatchPage from './components/TheMatchPage.vue';
   import { connectToChat, logout } from '@/store/chat.js';
 
   // Auth page state: 'login' or 'signup'
@@ -235,12 +236,11 @@
           @open-chat="openChat"
         />
 
-        <!-- Other tabs (placeholders) -->
-        <div v-else-if="currentTab === 'favorites'" class="placeholder-page">
-          <q-icon name="favorite" size="64px" color="grey-5" />
-          <p>Favoris</p>
-          <span>Bientôt disponible</span>
-        </div>
+        <!-- Match Tab -->
+        <TheMatchPage 
+          v-else-if="currentTab === 'favorites'"
+          @open-chat="openChat"
+        />
 
         <div v-else-if="currentTab === 'groups'" class="placeholder-page">
           <q-icon name="groups" size="64px" color="grey-5" />
