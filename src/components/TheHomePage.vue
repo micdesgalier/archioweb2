@@ -1,6 +1,15 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { currentUsername, allUsers, loadAllUsers } from '@/store/chat.js';
+import avatarAlice from '@/assets/Alice.png';
+import avatarAliceAnalyse from '@/assets/aliceanalyse.png';
+import avatarBob from '@/assets/bob.png';
+import avatarCaroline from '@/assets/caroline.png';
+import avatarDavid from '@/assets/david.png';
+import avatarEmilie from '@/assets/emilie.png';
+import avatarGroupeHeigVd from '@/assets/groupeheigvd.png';
+import avatarLausanneMath from '@/assets/groupelausannemath.png';
+import avatarGroupeEpfl from '@/assets/groupeepfl.png';
 
 const emit = defineEmits(['open-chat', 'open-calendar', 'open-profile']);
 
@@ -57,14 +66,35 @@ const suggestedUsers = computed(() => {
         });
       }
     }
+
+    // Use special images for specific users in suggestions
+    let avatarUrl = user.avatar_url || `https://i.pravatar.cc/100?u=${user._id || user.id}`;
+    const firstName = user.first_name?.toLowerCase();
+    
+    if (user.first_name === 'Alice' || user.email === 'alice.dupont@example.com') {
+      avatarUrl = avatarAliceAnalyse;
+    } else if (firstName === 'bob') {
+      avatarUrl = avatarBob;
+    } else if (firstName === 'caroline') {
+      avatarUrl = avatarCaroline;
+    } else if (firstName === 'david') {
+      avatarUrl = avatarDavid;
+    } else if (firstName === 'émilie' || firstName === 'emilie') {
+      avatarUrl = avatarEmilie;
+    }
+    
+    const isAlice = user.first_name === 'Alice' || user.email === 'alice.dupont@example.com';
+    const isBobOrCaroline = firstName === 'bob' || firstName === 'caroline';
     
     return {
       id: user._id || user.id,
       name: user.first_name,
       fullName: `${user.first_name} ${user.last_name}`,
-      avatar: user.avatar_url || `https://i.pravatar.cc/100?u=${user._id || user.id}`,
+      avatar: avatarUrl,
       tags: tags,
-      bgColor: userCardBgColor // Same color for all users
+      bgColor: userCardBgColor, // Same color for all users
+      isAlice: isAlice, // Flag to add specific class for Alice
+      isBobOrCaroline: isBobOrCaroline // Flag for Bob and Caroline (moderate zoom)
     };
   });
 });
@@ -74,7 +104,7 @@ const recommendedGroups = ref([
   {
     id: 'g1',
     name: 'Groupe HEIG-VD',
-    avatar: 'https://i.pravatar.cc/100?img=50',
+    avatar: avatarGroupeHeigVd,
     tags: [
       { name: 'programmation', isGroup: true }
     ],
@@ -83,7 +113,7 @@ const recommendedGroups = ref([
   {
     id: 'g2',
     name: 'Lausanne - Math',
-    avatar: 'https://i.pravatar.cc/100?img=51',
+    avatar: avatarLausanneMath,
     tags: [
       { name: 'maths', isGroup: true }
     ],
@@ -92,7 +122,7 @@ const recommendedGroups = ref([
   {
     id: 'g3',
     name: 'EPFL - Prog',
-    avatar: 'https://i.pravatar.cc/100?img=52',
+    avatar: avatarGroupeEpfl,
     tags: [
       { name: 'prog', isGroup: true }
     ],
@@ -134,7 +164,7 @@ onMounted(() => {
         <span class="wave">👋</span> Hello {{ currentUsername || 'User' }}
       </h1>
       <button class="profile-btn" @click="$emit('open-profile')">
-        <img src="https://i.pravatar.cc/100?img=47" alt="Profile" class="profile-avatar" />
+        <img :src="avatarAlice" alt="Profile" class="profile-avatar" />
       </button>
     </header>
 
@@ -185,7 +215,7 @@ onMounted(() => {
           @click="openUserChat(user)"
         >
           <div class="suggestion-avatar-container">
-            <img :src="user.avatar" :alt="user.name" class="suggestion-avatar" />
+            <img :src="user.avatar" :alt="user.name" :class="['suggestion-avatar', { 'alice-avatar-img': user.isAlice, 'bob-caroline-avatar-img': user.isBobOrCaroline }]" />
           </div>
           <span class="suggestion-name">{{ user.name }}</span>
           <div class="suggestion-tags">
@@ -297,7 +327,6 @@ onMounted(() => {
   height: 40px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid #E8E8E8;
 }
 
 /* Sections */
@@ -440,12 +469,28 @@ onMounted(() => {
 
 .suggestion-avatar-container.group-avatar {
   border-radius: 50%;
+  overflow: hidden;
 }
 
 .suggestion-avatar {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.suggestion-avatar.group-avatar-img {
+  transform: scale(1.15);
+  object-position: center;
+}
+
+.suggestion-avatar.alice-avatar-img {
+  transform: scale(1.3);
+  object-position: center;
+}
+
+.suggestion-avatar.bob-caroline-avatar-img {
+  transform: scale(1.15);
+  object-position: center;
 }
 
 .suggestion-name {

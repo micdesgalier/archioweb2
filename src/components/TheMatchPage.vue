@@ -2,9 +2,39 @@
 import { ref, computed, onMounted } from 'vue';
 import { useQuasar } from 'quasar';
 import { allUsers, loadAllUsers, currentUserId, currentUsername, sendPrivateMessage, studyGroups } from '@/store/chat.js';
+import avatarAliceAnalyse from '@/assets/aliceanalyse.png';
+import avatarBob from '@/assets/bob.png';
+import avatarCaroline from '@/assets/caroline.png';
+import avatarDavid from '@/assets/david.png';
+import avatarEmilie from '@/assets/emilie.png';
 
 const $q = useQuasar();
 const emit = defineEmits(['open-chat', 'open-chat-with-message']);
+
+// Helper function to get avatar URL based on user name
+function getUserAvatarUrl(user) {
+  const firstName = user.first_name?.toLowerCase();
+  
+  // Check for specific users first (prioritize local images)
+  if (user.first_name === 'Alice' || user.email === 'alice.dupont@example.com') {
+    return avatarAliceAnalyse;
+  } else if (firstName === 'bob') {
+    return avatarBob;
+  } else if (firstName === 'caroline') {
+    return avatarCaroline;
+  } else if (firstName === 'david') {
+    return avatarDavid;
+  } else if (firstName === 'émilie' || firstName === 'emilie') {
+    return avatarEmilie;
+  }
+  
+  // For other users, use avatar_url if available, otherwise use default
+  if (user.avatar_url) {
+    return user.avatar_url;
+  }
+  
+  return `https://i.pravatar.cc/200?u=${user._id || user.id}`;
+}
 
 // Session proposal form
 const showProposalModal = ref(false);
@@ -168,7 +198,7 @@ function openChat() {
         id: currentItem.value._id,
         name: `${currentItem.value.first_name} ${currentItem.value.last_name}`,
         partnerName: currentItem.value.first_name,
-        avatar: currentItem.value.avatar_url || `https://i.pravatar.cc/100?u=${currentItem.value._id}`
+        avatar: getUserAvatarUrl(currentItem.value)
       });
     }
   }
@@ -244,7 +274,7 @@ async function sendSessionProposal() {
         id: currentItem.value._id,
         name: `${currentItem.value.first_name} ${currentItem.value.last_name}`,
         partnerName: currentItem.value.first_name,
-        avatar: currentItem.value.avatar_url || `https://i.pravatar.cc/100?u=${currentItem.value._id}`
+        avatar: getUserAvatarUrl(currentItem.value)
       });
     }
   } catch (err) {
@@ -412,7 +442,7 @@ onMounted(() => {
         <div class="avatar-container">
           <img 
             v-if="currentItem.type === 'person'"
-            :src="currentItem.avatar_url || `https://i.pravatar.cc/200?u=${currentItem._id}`" 
+            :src="getUserAvatarUrl(currentItem)" 
             :alt="currentItem.first_name"
             class="user-avatar"
           />
@@ -742,7 +772,7 @@ onMounted(() => {
 .avatar-container {
   width: 180px;
   height: 180px;
-  border-radius: 32px;
+  border-radius: 50%;
   overflow: hidden;
   background: #FCD34D;
   margin-bottom: 16px;
@@ -753,6 +783,8 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transform: scale(1.15);
+  object-position: center;
 }
 
 .user-name {
@@ -919,4 +951,3 @@ onMounted(() => {
   }
 }
 </style>
-

@@ -5,6 +5,7 @@ import './styles/global.css';
 
 import { createApp } from 'vue';
 import { Quasar, Notify } from 'quasar';
+import langFr from 'quasar/lang/fr';
 import App from './AppChat.vue';
 
 // Import du router que tu as défini

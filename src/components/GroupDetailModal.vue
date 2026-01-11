@@ -141,8 +141,14 @@ function formatDate(dateStr) {
     <q-card class="group-detail-card">
       <q-card-section class="card-header">
         <div class="header-content">
-          <div class="group-avatar-large" :style="{ backgroundColor: group.avatarColor }">
-            <div class="avatar-faces">
+          <div class="group-avatar-large" :style="{ backgroundColor: group.avatarImage ? 'transparent' : group.avatarColor }">
+            <img 
+              v-if="group.avatarImage" 
+              :src="group.avatarImage" 
+              :alt="group.name" 
+              class="group-avatar-img-large"
+            />
+            <div v-else class="avatar-faces">
               <div v-for="(member, idx) in group.avatarMembers.slice(0, 3)" :key="idx" class="avatar-face">
                 <q-icon name="person" size="20px" />
               </div>
@@ -268,6 +274,13 @@ function formatDate(dateStr) {
   color: white;
 }
 
+.group-avatar-img-large {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
 .group-info-header {
   flex: 1;
   min-width: 0;
@@ -354,4 +367,3 @@ function formatDate(dateStr) {
   font-weight: 600;
 }
 </style>
-

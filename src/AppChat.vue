@@ -413,10 +413,55 @@
 
 .app-calendar :deep(.q-date__calendar-item--selected) {
   background: #4A90D9 !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--selected button) {
+  background: #4A90D9 !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--selected button .q-btn__content) {
+  color: white !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--selected .q-btn__content) {
+  color: white !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--selected .q-btn__content span) {
+  color: white !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--selected *) {
+  color: white !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--selected button *) {
+  color: white !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--selected span) {
+  color: white !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--selected div) {
+  color: white !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--selected .q-btn__wrapper) {
+  color: white !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--selected .q-btn__wrapper *) {
+  color: white !important;
 }
 
 .app-calendar :deep(.q-date__calendar-item--today) {
-  border: 2px solid #4A90D9;
+  border: none;
 }
 
 .app-calendar :deep(.q-date__navigation) {
@@ -445,18 +490,48 @@
 .app-calendar :deep(.q-date__calendar-item) {
   border-radius: 8px;
   margin: 2px;
+  border: none !important;
+  outline: none !important;
 }
 
 .app-calendar :deep(.q-date__calendar-item button) {
   border-radius: 8px;
+  color: #4A90D9 !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item--fill button) {
+  color: #4A90D9 !important;
 }
 
 .app-calendar :deep(.q-date__calendar-item:hover button) {
   background: #F0F7FF;
+  color: #4A90D9 !important;
+  border: none !important;
+  outline: none !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item:hover button .q-btn__content) {
+  color: #4A90D9 !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item:focus button) {
+  border: none !important;
+  outline: none !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item button:focus) {
+  border: none !important;
+  outline: none !important;
+}
+
+.app-calendar :deep(.q-date__calendar-item:not(.q-date__calendar-item--out):not(.q-date__calendar-item--selected) button) {
+  color: #4A90D9 !important;
 }
 
 .app-calendar :deep(.q-date__event) {
-  background: #4A90D9 !important;
+  display: none !important;
 }
 
 /* Week row separator */

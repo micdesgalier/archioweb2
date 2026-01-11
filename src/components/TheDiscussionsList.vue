@@ -1,6 +1,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { users, allUsers, privateMessages, currentUsername, currentUserId, loadConversations, loadAllUsers } from '@/store/chat.js';
+import avatarAliceAnalyse from '@/assets/aliceanalyse.png';
+import avatarBob from '@/assets/bob.png';
+import avatarCaroline from '@/assets/caroline.png';
+import avatarDavid from '@/assets/david.png';
+import avatarEmilie from '@/assets/emilie.png';
 
 const emit = defineEmits(['open-chat']);
 const searchQuery = ref('');
@@ -39,13 +44,29 @@ const discussions = computed(() => {
       const userName = user.first_name;
       const msgInfo = getLastMessageInfo(userName);
       
+      // Use special images for specific users
+      let avatarUrl = user.avatar_url || `https://i.pravatar.cc/100?u=${user._id}`;
+      const firstName = user.first_name?.toLowerCase();
+      
+      if (user.first_name === 'Alice' || user.email === 'alice.dupont@example.com') {
+        avatarUrl = avatarAliceAnalyse;
+      } else if (firstName === 'bob') {
+        avatarUrl = avatarBob;
+      } else if (firstName === 'caroline') {
+        avatarUrl = avatarCaroline;
+      } else if (firstName === 'david') {
+        avatarUrl = avatarDavid;
+      } else if (firstName === 'émilie' || firstName === 'emilie') {
+        avatarUrl = avatarEmilie;
+      }
+      
       return {
         id: user._id,
         name: `${user.first_name} ${user.last_name}`,
         partnerName: userName, // First name used for messages
         fullName: `${user.first_name} ${user.last_name}`,
         email: user.email,
-        avatar: user.avatar_url || `https://i.pravatar.cc/100?u=${user._id}`,
+        avatar: avatarUrl,
         lastMessage: msgInfo?.text || 'Démarrer une conversation',
         time: msgInfo?.time || '',
         unread: 0,
@@ -83,7 +104,6 @@ function openChat(discussion) {
 
 onMounted(async () => {
   await loadAllUsers();
-  console.log("LOOOOOOOOOOOOOAD");
   await loadConversations();
 });
 </script>

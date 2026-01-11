@@ -4,6 +4,9 @@ import { useQuasar } from 'quasar';
 import { studyGroups, groupMembers, currentUserId, loadStudyGroups, loadGroupMembers, authToken, allUsers } from '@/store/chat.js';
 import CreateGroupModal from './CreateGroupModal.vue';
 import GroupDetailModal from './GroupDetailModal.vue';
+import avatarRevisionsMaths from '@/assets/revisionsmaths.png';
+import avatarAlgorithmiqueAvancee from '@/assets/algorythmiqueavancee.png';
+import avatarPhysiqueMecanique from '@/assets/physiquemecanique.png';
 
 const $q = useQuasar();
 const emit = defineEmits(['open-chat', 'session-added']);
@@ -19,6 +22,20 @@ function getGroupMembers(groupId) {
     const targetGroupId = groupId?._id || groupId;
     return String(memberGroupId) === String(targetGroupId);
   });
+}
+
+function getGroupAvatarImage(groupName) {
+  const name = groupName?.toLowerCase() || '';
+  
+  if (name.includes('révisions mathématiques') || name.includes('revisions mathématiques') || name.includes('mathématiques l1') || name.includes('mathematiques l1')) {
+    return avatarRevisionsMaths;
+  } else if (name.includes('algorithmique avancée') || name.includes('algorithmique avancee')) {
+    return avatarAlgorithmiqueAvancee;
+  } else if (name.includes('physique') && (name.includes('mécanique') || name.includes('mecanique'))) {
+    return avatarPhysiqueMecanique;
+  }
+  
+  return null; // Return null to use default avatar color system
 }
 
 // Check if current user is member of group
@@ -132,6 +149,7 @@ const groups = computed(() => {
       sessionTime,
       sessionTopic,
       avatarColor: getAvatarColor(group.title),
+      avatarImage: getGroupAvatarImage(group.title),
       avatarMembers: getGroupAvatarMembers(group._id),
       rawGroup: group
     };
@@ -175,6 +193,7 @@ const groups = computed(() => {
       sessionTime,
       sessionTopic,
       avatarColor: getAvatarColor(group.title),
+      avatarImage: getGroupAvatarImage(group.title),
       avatarMembers: getGroupAvatarMembers(group._id),
       rawGroup: group
     };
@@ -296,8 +315,14 @@ onMounted(async () => {
         @click="openGroupDetail(group)"
       >
         <!-- Avatar -->
-        <div class="group-avatar" :style="{ backgroundColor: group.avatarColor }">
-          <div class="avatar-faces">
+        <div class="group-avatar" :style="{ backgroundColor: group.avatarImage ? 'transparent' : group.avatarColor }">
+          <img 
+            v-if="group.avatarImage" 
+            :src="group.avatarImage" 
+            :alt="group.name" 
+            class="group-avatar-img"
+          />
+          <div v-else class="avatar-faces">
             <div v-for="(member, idx) in group.avatarMembers.slice(0, 3)" :key="idx" class="avatar-face">
               <q-icon name="person" size="16px" />
             </div>
@@ -387,7 +412,6 @@ onMounted(async () => {
 
 .groups-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
   background: white;
@@ -402,12 +426,6 @@ onMounted(async () => {
   font-weight: 700;
   color: #1a1a1a;
   margin: 0;
-}
-
-.search-header-icon {
-  font-size: 24px;
-  color: #666;
-  cursor: pointer;
 }
 
 .search-bar {
@@ -491,6 +509,13 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   color: white;
+}
+
+.group-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
 }
 
 .group-content {

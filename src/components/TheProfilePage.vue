@@ -1,6 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { currentUserId, authToken, logout } from '@/store/chat.js';
+import avatarAlice from '@/assets/Alice.png';
 
 const emit = defineEmits(['logout']);
 
@@ -45,7 +46,7 @@ async function loadProfile() {
         last_name: 'Dupont',
         study_year: 2,
         field_id: { name: 'Informatique' },
-        avatar_url: 'https://i.pravatar.cc/150?img=1'
+        avatar_url: avatarAlice
       };
       editedFirstName.value = 'Alice';
       editedLastName.value = 'Dupont';
@@ -130,6 +131,10 @@ const availabilities = computed(() => {
 
 // Photo de profil
 const profilePicture = computed(() => {
+  // Si c'est Alice, utiliser l'image locale
+  if (profileData.value?.first_name === 'Alice' || profileData.value?.email === 'alice.dupont@example.com') {
+    return avatarAlice;
+  }
   return profileData.value?.avatar_url || 'https://i.pravatar.cc/150?img=1';
 });
 
@@ -524,7 +529,7 @@ async function handleLogout() {
   margin: 20px;
   padding: 24px 20px;
   border-radius: 20px;
-  background: #0066FF;
+  background: #4A90D9;
   color: white;
   position: relative;
 }
@@ -540,8 +545,6 @@ async function handleLogout() {
   height: 100px;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.2);
 }
 
 /* Sections */
@@ -894,11 +897,11 @@ async function handleLogout() {
 }
 
 .edit-profile-btn {
-  background: linear-gradient(135deg, #0046FB 0%, #0035C0 100%);
+  background: linear-gradient(135deg, #4A90D9 0%, #3B7DC9 100%);
 }
 
 .logout-btn {
-  background: linear-gradient(135deg, #0066FF 0%, #0046FB 100%);
+  background: linear-gradient(135deg, #4A90D9 0%, #3B7DC9 100%);
 }
 
 .cancel-btn {
